@@ -1,0 +1,113 @@
+"""
+Auth service — verifies Supabase JWTs and checks the authorized_admins allow-list.
+
+The check is two-layer:
+1. Verify the JWT signature using SUPABASE_JWT_SECRET (Supabase HS256)
+2. Query the authorized_admins table (via service-role client) to confirm
+   the email is on the allow-list and get the role.
+
+If either check fails, the request is rejected with 403.
+"""
+import logging
+from typing import Annotated
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
+
+from app.config import settings as cfg
+from app.db import get_supabase
+
+logger = logging.getLogger(__name__)
+bearer_scheme = HTTPBearer(auto_error=False)
+
+
+class AdminUser:
+    def __init__(self, email: str, name: str, role: str):
+        self.email = email
+        self.name = name
+        self.role = role
+
+    @property
+    def is_owner(self) -> bool:
+        return self.role == "owner"
+
+    @property
+    def is_audit_or_owner(self) -> bool:
+        return self.role in ("owner", "audit")
+
+
+def _decode_token(token: str) -> dict:
+    """Decode and verify a Supabase JWT."""
+    try:
+        payload = jwt.decode(
+            token,
+            cfg.SUPABASE_JWT_SECRET,
+            algorithms=["HS256"],
+            options={"verify_aud": False},
+        )
+        return payload
+    except JWTError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid or expired token: {e}",
+        )
+
+
+def _get_admin_record(email: str) -> dict | None:
+    """Check authorized_admins table using service role client."""
+    db = get_supabase()
+    resp = (
+        db.table("authorized_admins")
+        .select("email, name, role")
+        .eq("email", email)
+        .single()
+        .execute()
+    )
+    return resp.data
+
+
+async def get_current_admin(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> AdminUser:
+    """FastAPI dependency: validates token + authorized_admins membership."""
+    if credentials is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No token provided")
+
+    payload = _decode_token(credentials.credentials)
+    email = payload.get("email") or (payload.get("user_metadata") or {}).get("email")
+    if not email:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has no email claim")
+
+    record = _get_admin_record(email)
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account is not authorized to access the admin area.",
+        )
+
+    return AdminUser(email=record["email"], name=record["name"], role=record["role"])
+
+
+async def require_owner(
+    admin: Annotated[AdminUser, Depends(get_current_admin)],
+) -> AdminUser:
+    """Dependency that requires the 'owner' role."""
+    if not admin.is_owner:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This action requires the 'owner' role.",
+        )
+    return admin
+
+
+async def require_audit_or_owner(
+    admin: Annotated[AdminUser, Depends(get_current_admin)],
+) -> AdminUser:
+    """Dependency that requires 'audit' or 'owner' role."""
+    if not admin.is_audit_or_owner:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This action requires admin access.",
+        )
+    return admin
