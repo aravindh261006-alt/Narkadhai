@@ -28,6 +28,7 @@ export const membersApi = {
   create: (data: object) => api.post('/members', data).then(r => r.data),
   update: (id: string, data: object) => api.put(`/members/${id}`, data).then(r => r.data),
   delete: (id: string) => api.delete(`/members/${id}`),
+  getUploadUrl: () => api.post('/members/upload-url').then(r => r.data),
 };
 
 export const albumsApi = {
@@ -69,4 +70,5 @@ export const adminApi = {
   listAdmins: () => api.get('/admin/admins').then(r => r.data),
   addAdmin: (data: object) => api.post('/admin/admins', data).then(r => r.data),
   removeAdmin: (id: string) => api.delete(`/admin/admins/${id}`),
+  me: () => api.get('/admin/me').then(r => r.data),
 };

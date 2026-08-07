@@ -72,3 +72,15 @@ async def delete_member(
     """Owner only: delete a member."""
     db = get_supabase()
     db.table("members").delete().eq("id", member_id).execute()
+
+
+@router.post("/upload-url")
+async def get_member_photo_upload_url(
+    admin: Annotated[AdminUser, Depends(require_owner)],
+):
+    """Owner only: get a signed upload URL for member photos."""
+    import uuid
+    db = get_supabase()
+    path = f"{uuid.uuid4()}.jpg"
+    signed = db.storage.from_("member-photos").create_signed_upload_url(path)
+    return {"signed_url": signed.get("signedUrl"), "path": path}

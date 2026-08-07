@@ -1,20 +1,40 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Trash2, Camera, ChevronRight, X, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Camera, ChevronRight, X, Loader2, Pencil } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { albumsApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { formatDate } from '../../lib/utils';
 import type { Album, AlbumWithPhotos } from '../../types';
 
+const parseDescription = (desc: string | null) => {
+  if (!desc) return { location: '', contact: '', description: '' };
+  const match = desc.match(/^Location:\s*(.*)\nContact:\s*(.*)\n\n([\s\S]*)$/);
+  if (match) {
+    return {
+      location: match[1].trim(),
+      contact: match[2].trim(),
+      description: match[3].trim(),
+    };
+  }
+  return { location: '', contact: '', description: desc };
+};
+
+const formatDescription = (location: string, contact: string, desc: string) => {
+  return `Location: ${location}\nContact: ${contact}\n\n${desc}`;
+};
+
 export default function AdminAlbums() {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [selected, setSelected] = useState<AlbumWithPhotos | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [savingDetails, setSavingDetails] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [newAlbum, setNewAlbum] = useState({ home_name: '', visit_date: '', description: '' });
+  const [newAlbum, setNewAlbum] = useState({ home_name: '', visit_date: '', location: '', contact_number: '', description: '' });
+  const [editAlbum, setEditAlbum] = useState({ home_name: '', visit_date: '', location: '', contact_number: '', description: '' });
 
   const load = () => albumsApi.list().then(setAlbums).catch(() => {}).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
@@ -25,14 +45,52 @@ export default function AdminAlbums() {
     if (!newAlbum.home_name || !newAlbum.visit_date) return toast.error('Home name and visit date are required');
     setCreating(true);
     try {
-      await albumsApi.create(newAlbum);
+      const formattedDesc = formatDescription(newAlbum.location, newAlbum.contact_number, newAlbum.description);
+      await albumsApi.create({
+        home_name: newAlbum.home_name,
+        visit_date: newAlbum.visit_date,
+        description: formattedDesc,
+      });
       toast.success('Album created');
       setShowCreate(false);
-      setNewAlbum({ home_name: '', visit_date: '', description: '' });
+      setNewAlbum({ home_name: '', visit_date: '', location: '', contact_number: '', description: '' });
       load();
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || 'Failed to create');
     } finally { setCreating(false); }
+  };
+
+  const openEdit = () => {
+    if (!selected) return;
+    const parsed = parseDescription(selected.description);
+    setEditAlbum({
+      home_name: selected.home_name,
+      visit_date: selected.visit_date,
+      location: parsed.location,
+      contact_number: parsed.contact,
+      description: parsed.description,
+    });
+    setShowEdit(true);
+  };
+
+  const handleEdit = async () => {
+    if (!selected) return;
+    if (!editAlbum.home_name || !editAlbum.visit_date) return toast.error('Home name and visit date are required');
+    setSavingDetails(true);
+    try {
+      const formattedDesc = formatDescription(editAlbum.location, editAlbum.contact_number, editAlbum.description);
+      await albumsApi.update(selected.id, {
+        home_name: editAlbum.home_name,
+        visit_date: editAlbum.visit_date,
+        description: formattedDesc,
+      });
+      toast.success('Album details updated');
+      setShowEdit(false);
+      loadAlbum(selected.id);
+      load();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Failed to update details');
+    } finally { setSavingDetails(false); }
   };
 
   const handleDeleteAlbum = async (id: string) => {
@@ -112,10 +170,27 @@ export default function AdminAlbums() {
                     <h3 className="font-display font-bold text-gray-800">{selected.home_name}</h3>
                     <p className="text-xs text-gray-400">{formatDate(selected.visit_date)} · {selected.photos.length} photo{selected.photos.length !== 1 ? 's' : ''}</p>
                   </div>
-                  <button onClick={() => handleDeleteAlbum(selected.id)} className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex gap-2">
+                    <button onClick={openEdit} className="p-2 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-primary-50 transition-all" title="Edit details">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDeleteAlbum(selected.id)} className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all" title="Delete album">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
+
+                {/* Parsed description details */}
+                {(() => {
+                  const parsed = parseDescription(selected.description);
+                  return (
+                    <div className="mb-4 text-xs bg-gray-50 p-4 rounded-xl space-y-1">
+                      {parsed.location && <p className="text-gray-600">📍 <strong>Location:</strong> {parsed.location}</p>}
+                      {parsed.contact && <p className="text-gray-600">📞 <strong>Contact:</strong> {parsed.contact}</p>}
+                      {parsed.description && <p className="text-gray-700 mt-2 leading-relaxed whitespace-pre-line">{parsed.description}</p>}
+                    </div>
+                  );
+                })()}
 
                 {/* Upload area */}
                 <label className="block mb-4 cursor-pointer border-2 border-dashed border-primary-200 rounded-xl p-4 text-center hover:border-primary-400 transition-colors">
@@ -158,7 +233,7 @@ export default function AdminAlbums() {
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
           <div className="bg-white rounded-2xl p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
             <h3 className="font-display text-xl font-bold mb-4">New Album</h3>
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Home Name *</label>
                 <input value={newAlbum.home_name} onChange={e => setNewAlbum(p => ({ ...p, home_name: e.target.value }))}
@@ -168,6 +243,16 @@ export default function AdminAlbums() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Visit Date *</label>
                 <input type="date" value={newAlbum.visit_date} onChange={e => setNewAlbum(p => ({ ...p, visit_date: e.target.value }))}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                <input value={newAlbum.location} onChange={e => setNewAlbum(p => ({ ...p, location: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm" placeholder="e.g. Chennai, Tamil Nadu" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+                <input value={newAlbum.contact_number} onChange={e => setNewAlbum(p => ({ ...p, contact_number: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm" placeholder="e.g. +91 98765 43210" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -180,6 +265,48 @@ export default function AdminAlbums() {
                 {creating ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating...</> : 'Create Album'}
               </button>
               <button onClick={() => setShowCreate(false)} className="px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit album modal */}
+      {showEdit && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowEdit(false)}>
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
+            <h3 className="font-display text-xl font-bold mb-4">Edit Album Details</h3>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Home Name *</label>
+                <input value={editAlbum.home_name} onChange={e => setEditAlbum(p => ({ ...p, home_name: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm" placeholder="Name of the home visited" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Visit Date *</label>
+                <input type="date" value={editAlbum.visit_date} onChange={e => setEditAlbum(p => ({ ...p, visit_date: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                <input value={editAlbum.location} onChange={e => setEditAlbum(p => ({ ...p, location: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm" placeholder="e.g. Chennai, Tamil Nadu" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+                <input value={editAlbum.contact_number} onChange={e => setEditAlbum(p => ({ ...p, contact_number: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm" placeholder="e.g. +91 98765 43210" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea rows={3} value={editAlbum.description} onChange={e => setEditAlbum(p => ({ ...p, description: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm resize-none" placeholder="Brief description of the visit" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={handleEdit} disabled={savingDetails} className="flex-1 bg-primary-700 text-white py-3 rounded-xl font-medium text-sm hover:bg-primary-800 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+                {savingDetails ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : 'Save Changes'}
+              </button>
+              <button onClick={() => setShowEdit(false)} className="px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
             </div>
           </div>
         </div>

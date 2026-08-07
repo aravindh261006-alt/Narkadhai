@@ -17,6 +17,9 @@ export default function AdminDonations() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'verified' | 'rejected'>('all');
   const [selected, setSelected] = useState<Donation | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const load = () => donationsApi.list().then(setDonations).catch(() => {}).finally(() => setLoading(false));
 
@@ -33,7 +36,28 @@ export default function AdminDonations() {
     }
   };
 
-  const filtered = filter === 'all' ? donations : donations.filter(d => d.status === filter);
+  const filtered = donations
+    .filter(d => {
+      // 1. Status Filter
+      if (filter !== 'all' && d.status !== filter) return false;
+
+      // 2. Name Search
+      if (searchTerm && !d.donor_name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+
+      // 3. Date Range Filter
+      if (startDate) {
+        const dDate = new Date(d.created_at).setHours(0, 0, 0, 0);
+        const sDate = new Date(startDate).setHours(0, 0, 0, 0);
+        if (dDate < sDate) return false;
+      }
+      if (endDate) {
+        const dDate = new Date(d.created_at).setHours(23, 59, 59, 999);
+        const eDate = new Date(endDate).setHours(23, 59, 59, 999);
+        if (dDate > eDate) return false;
+      }
+
+      return true;
+    });
 
   return (
     <AdminLayout>
@@ -41,6 +65,38 @@ export default function AdminDonations() {
         <div className="mb-6">
           <h1 className="font-display text-3xl font-bold text-gray-800">Donations</h1>
           <p className="text-gray-500 text-sm mt-1">Review and verify donor-reported donations.</p>
+        </div>
+
+        {/* Search and Date Range Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="md:col-span-2">
+            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Search Donor</label>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Search by donor name..."
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm bg-white"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm bg-white"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm bg-white"
+            />
+          </div>
         </div>
 
         {/* Filter tabs */}
@@ -69,6 +125,8 @@ export default function AdminDonations() {
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Donor</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">UTR / Txn ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Screenshot</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
@@ -76,7 +134,7 @@ export default function AdminDonations() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-12 text-center text-gray-400">No donations found</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-12 text-center text-gray-400">No donations found</td></tr>
                 ) : filtered.map(d => {
                   const cfg = STATUS_CONFIG[d.status];
                   return (
@@ -86,6 +144,19 @@ export default function AdminDonations() {
                         <p className="text-xs text-gray-400">{d.donor_email}</p>
                       </td>
                       <td className="px-4 py-3 font-semibold text-gray-800">{formatINR(d.amount)}</td>
+                      <td className="px-4 py-3 text-gray-600 text-xs font-mono">{d.utr_or_txn_id || '—'}</td>
+                      <td className="px-4 py-3">
+                        {d.screenshot_url ? (
+                          <button
+                            onClick={() => setSelected(d)}
+                            className="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-800 font-medium"
+                          >
+                            🖼️ View
+                          </button>
+                        ) : (
+                          <span className="text-gray-400 text-xs">None</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-gray-500">{formatDate(d.created_at)}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.color}`}>

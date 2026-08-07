@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, X, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Loader2, Upload } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { membersApi } from '../../lib/api';
+import { supabase } from '../../lib/supabase';
 import type { Member } from '../../types';
 
 interface FormState {
@@ -22,6 +23,7 @@ export default function AdminMembers() {
   const [editing, setEditing] = useState<Member | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const load = () => membersApi.list().then(setMembers).catch(() => {}).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
@@ -125,7 +127,6 @@ export default function AdminMembers() {
                 { key: 'name', label: 'Name *', placeholder: 'Full name' },
                 { key: 'role', label: 'Role *', placeholder: 'e.g. Volunteer, Coordinator' },
                 { key: 'bio', label: 'Bio', placeholder: 'Short bio (optional)' },
-                { key: 'photo_url', label: 'Photo URL', placeholder: 'https://...' },
               ] as const).map(field => (
                 <div key={field.key}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
@@ -147,6 +148,58 @@ export default function AdminMembers() {
                   )}
                 </div>
               ))}
+
+              {/* Photo Upload Section */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Member Photo</label>
+                {form.photo_url ? (
+                  <div className="relative w-28 h-28 rounded-2xl overflow-hidden border border-gray-200 group">
+                    <img src={form.photo_url} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setForm(prev => ({ ...prev, photo_url: '' }))}
+                      className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity text-xs font-medium"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl p-6 cursor-pointer hover:border-primary-400 hover:bg-primary-50/20 transition-all">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async e => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setUploading(true);
+                        try {
+                          const ext = file.name.split('.').pop() || 'jpg';
+                          const path = `${Date.now()}.${ext}`;
+                          const { data: uploadData, error } = await supabase.storage.from('member-photos').upload(path, file);
+                          if (error) throw error;
+                          const { data: { publicUrl } } = supabase.storage.from('member-photos').getPublicUrl(uploadData.path);
+                          setForm(prev => ({ ...prev, photo_url: publicUrl }));
+                          toast.success('Photo uploaded');
+                        } catch {
+                          toast.error('Upload failed');
+                        } finally {
+                          setUploading(false);
+                        }
+                      }}
+                    />
+                    {uploading ? (
+                      <Loader2 className="w-6 h-6 text-primary-500 animate-spin" />
+                    ) : (
+                      <>
+                        <Upload className="w-6 h-6 text-gray-400 mb-2" />
+                        <span className="text-xs text-gray-500 font-medium">Click to upload photo</span>
+                      </>
+                    )}
+                  </label>
+                )}
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Display Order</label>
                 <input type="number" value={form.display_order}

@@ -23,6 +23,8 @@ import AdminMembers from './pages/admin/AdminMembers';
 import AdminAlbums from './pages/admin/AdminAlbums';
 import AdminAudit from './pages/admin/AdminAudit';
 import AdminSettings from './pages/admin/AdminSettings';
+import AdminAccess from './pages/admin/AdminAccess';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -58,6 +60,7 @@ export default function App() {
 
         {/* Login */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Admin (protected) */}
         <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
@@ -66,6 +69,7 @@ export default function App() {
         <Route path="/admin/albums" element={<AdminRoute><AdminAlbums /></AdminRoute>} />
         <Route path="/admin/audit" element={<AdminRoute><AdminAudit /></AdminRoute>} />
         <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+        <Route path="/admin/admins" element={<AdminRoute><AdminAccess /></AdminRoute>} />
       </Routes>
     </BrowserRouter>
   );

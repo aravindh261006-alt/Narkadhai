@@ -1,8 +1,10 @@
 import { type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Heart, LayoutDashboard, DollarSign, Users, Camera, FileText, Settings, LogOut } from 'lucide-react';
+import { Heart, LayoutDashboard, DollarSign, Users, Camera, FileText, Settings, LogOut, Shield } from 'lucide-react';
+import { adminApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
+import { useState, useEffect } from 'react';
 
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -11,17 +13,30 @@ const navItems = [
   { to: '/admin/albums', label: 'Albums', icon: Camera },
   { to: '/admin/audit', label: 'Audit Docs', icon: FileText },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
+  { to: '/admin/admins', label: 'Admin Access', icon: Shield },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [role, setRole] = useState<'owner' | 'audit' | null>(null);
+
+  useEffect(() => {
+    adminApi.me()
+      .then(user => setRole(user.role))
+      .catch(() => {});
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast.success('Logged out');
     navigate('/login');
   };
+
+  const filteredNavItems = navItems.filter(item => {
+    if (item.to === '/admin/admins' && role !== 'owner') return false;
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -40,7 +55,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
-          {navItems.map(item => {
+          {filteredNavItems.map(item => {
             const active = item.exact
               ? location.pathname === item.to
               : location.pathname.startsWith(item.to);
