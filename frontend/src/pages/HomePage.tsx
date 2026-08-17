@@ -27,7 +27,7 @@ export default function HomePage() {
     Promise.all([
       donationsApi.totals().then(setTotals).catch(() => {}),
       settingsApi.get().then(setSettings).catch(() => {}),
-      albumsApi.list().then((a: Album[]) => setAlbums(a.slice(0, 3))).catch(() => {}),
+      albumsApi.list().then((a: any) => setAlbums(Array.isArray(a) ? a.slice(0, 3) : [])).catch(() => setAlbums([])),
     ]).finally(() => setLoading(false));
   }, []);
 
@@ -118,7 +118,7 @@ export default function HomePage() {
         </section>
 
         {/* Latest albums preview */}
-        {albums.length > 0 && (
+        {Array.isArray(albums) && albums.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -130,7 +130,7 @@ export default function HomePage() {
               </Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {albums.map(album => (
+              {(Array.isArray(albums) ? albums : []).map(album => (
                 <Link key={album.id} to={`/albums/${album.id}`} className="group block bg-white rounded-2xl overflow-hidden shadow-sm border border-primary-100 card-hover">
                   <div className="h-48 bg-primary-100 overflow-hidden">
                     {album.cover_photo_url ? (

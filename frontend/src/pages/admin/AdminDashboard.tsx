@@ -73,9 +73,9 @@ export default function AdminDashboard() {
                   <Link to="/admin/donations" className="text-xs text-primary-600 hover:underline">View all →</Link>
                 </div>
                 <div className="space-y-3">
-                  {(data?.recent_donations || []).length === 0 ? (
+                  {(!data?.recent_donations || !Array.isArray(data.recent_donations) || data.recent_donations.length === 0) ? (
                     <p className="text-gray-400 text-sm text-center py-4">No donations yet</p>
-                  ) : data.recent_donations.map((d: any) => (
+                  ) : (Array.isArray(data.recent_donations) ? data.recent_donations : []).map((d: any) => (
                     <div key={d.id} className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-800">{d.donor_name}</p>
@@ -103,9 +103,9 @@ export default function AdminDashboard() {
                   <Clock className="w-4 h-4 text-gray-400" />
                 </div>
                 <div className="space-y-3">
-                  {(data?.recent_messages || []).length === 0 ? (
+                  {(!data?.recent_messages || !Array.isArray(data.recent_messages) || data.recent_messages.length === 0) ? (
                     <p className="text-gray-400 text-sm text-center py-4">No messages yet</p>
-                  ) : data.recent_messages.map((m: any) => (
+                  ) : (Array.isArray(data.recent_messages) ? data.recent_messages : []).map((m: any) => (
                     <div key={m.id} className={`flex items-start gap-2 ${!m.is_read ? 'opacity-100' : 'opacity-60'}`}>
                       <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${!m.is_read ? 'bg-primary-500' : 'bg-gray-300'}`} />
                       <div>

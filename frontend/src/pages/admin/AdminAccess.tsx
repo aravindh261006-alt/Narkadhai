@@ -26,14 +26,15 @@ export default function AdminAccess() {
     try {
       const me = await adminApi.me();
       setCurrentUser(me);
-      if (me.role !== 'owner') {
+      if (me?.role !== 'owner') {
         setLoading(false);
         return;
       }
       const data = await adminApi.listAdmins();
-      setAdmins(data);
+      setAdmins(Array.isArray(data) ? data : []);
     } catch {
       toast.error('Failed to load admin lists');
+      setAdmins([]);
     } finally {
       setLoading(false);
     }
@@ -180,9 +181,11 @@ export default function AdminAccess() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {admins.map(a => {
-                    const isSelf = currentUser?.email.toLowerCase() === a.email.toLowerCase();
-                    const isOwnerEmail = a.email.toLowerCase() === 'support.narkadhai@gmail.com';
+                  {(!Array.isArray(admins) || admins.length === 0) ? (
+                    <tr><td colSpan={4} className="px-5 py-8 text-center text-gray-400">No admins found</td></tr>
+                  ) : (Array.isArray(admins) ? admins : []).map(a => {
+                    const isSelf = currentUser?.email?.toLowerCase() === a.email?.toLowerCase();
+                    const isOwnerEmail = a.email?.toLowerCase() === 'support.narkadhai@gmail.com';
                     return (
                       <tr key={a.id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-5 py-4">

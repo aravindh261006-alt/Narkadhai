@@ -21,7 +21,10 @@ export default function AdminDonations() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const load = () => donationsApi.list().then(setDonations).catch(() => {}).finally(() => setLoading(false));
+  const load = () => donationsApi.list()
+    .then(res => setDonations(Array.isArray(res) ? res : []))
+    .catch(() => setDonations([]))
+    .finally(() => setLoading(false));
 
   useEffect(() => { load(); }, []);
 
@@ -29,14 +32,15 @@ export default function AdminDonations() {
     try {
       await donationsApi.updateStatus(id, status);
       toast.success(`Donation marked as ${status}`);
-      setDonations(prev => prev.map(d => d.id === id ? { ...d, status } : d));
+      setDonations(prev => (Array.isArray(prev) ? prev : []).map(d => d.id === id ? { ...d, status } : d));
       if (selected?.id === id) setSelected(prev => prev ? { ...prev, status } : null);
     } catch {
       toast.error('Failed to update status');
     }
   };
 
-  const filtered = donations
+  const safeDonations = Array.isArray(donations) ? donations : [];
+  const filtered = safeDonations
     .filter(d => {
       // 1. Status Filter
       if (filter !== 'all' && d.status !== filter) return false;
@@ -135,7 +139,7 @@ export default function AdminDonations() {
               <tbody className="divide-y divide-gray-50">
                 {filtered.length === 0 ? (
                   <tr><td colSpan={7} className="px-4 py-12 text-center text-gray-400">No donations found</td></tr>
-                ) : filtered.map(d => {
+                ) : (Array.isArray(filtered) ? filtered : []).map(d => {
                   const cfg = STATUS_CONFIG[d.status];
                   return (
                     <tr key={d.id} className="hover:bg-gray-50 transition-colors">

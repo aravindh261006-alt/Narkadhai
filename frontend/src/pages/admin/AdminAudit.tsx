@@ -16,7 +16,10 @@ export default function AdminAudit() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const load = () => auditApi.list().then(setDocs).catch(() => {}).finally(() => setLoading(false));
+  const load = () => auditApi.list()
+    .then(res => setDocs(Array.isArray(res) ? res : []))
+    .catch(() => setDocs([]))
+    .finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
   const handleUploadAndSave = async () => {
@@ -60,9 +63,11 @@ export default function AdminAudit() {
     try {
       await auditApi.delete(id);
       toast.success('Document deleted');
-      setDocs(prev => prev.filter(d => d.id !== id));
+      setDocs(prev => (Array.isArray(prev) ? prev : []).filter(d => d.id !== id));
     } catch { toast.error('Failed to delete'); }
   };
+
+  const safeDocs = Array.isArray(docs) ? docs : [];
 
   return (
     <AdminLayout>
@@ -79,14 +84,14 @@ export default function AdminAudit() {
 
         {loading ? (
           <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-20 bg-white rounded-xl animate-pulse" />)}</div>
-        ) : docs.length === 0 ? (
+        ) : safeDocs.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
             <FileText className="w-12 h-12 mx-auto mb-3 opacity-20" />
             <p>No audit documents yet.</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {docs.map(doc => (
+            {safeDocs.map(doc => (
               <div key={doc.id} className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm flex items-center gap-4">
                 <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
                   <FileText className="w-5 h-5 text-red-500" />

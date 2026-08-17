@@ -9,8 +9,9 @@ interface Props {
 }
 
 export default function DonationTracker({ totals, target, compact = false }: Props) {
-  const reportedPct = target > 0 ? clamp((totals.reported_total / target) * 100, 0, 100) : 0;
-  const verifiedPct = target > 0 ? clamp((totals.verified_total / target) * 100, 0, 100) : 0;
+  const safeTotals = totals || { reported_total: 0, verified_total: 0, reported_count: 0, verified_count: 0 };
+  const reportedPct = target > 0 ? clamp(((safeTotals.reported_total || 0) / target) * 100, 0, 100) : 0;
+  const verifiedPct = target > 0 ? clamp(((safeTotals.verified_total || 0) / target) * 100, 0, 100) : 0;
 
   if (compact) {
     return (
@@ -24,7 +25,7 @@ export default function DonationTracker({ totals, target, compact = false }: Pro
           <div className="bg-primary-600 h-2 rounded-full -mt-2 transition-all" style={{ width: `${verifiedPct}%` }} />
         </div>
         <div className="flex justify-between text-xs text-gray-500 mt-1">
-          <span>{formatINR(totals.verified_total)} verified</span>
+          <span>{formatINR(safeTotals.verified_total || 0)} verified</span>
           <span>Target: {formatINR(target)}</span>
         </div>
       </div>
@@ -62,8 +63,8 @@ export default function DonationTracker({ totals, target, compact = false }: Pro
             <Clock className="w-4 h-4 text-primary-400" />
             <span className="text-xs text-primary-600 font-medium uppercase tracking-wide">Reported</span>
           </div>
-          <p className="text-2xl font-display font-bold text-primary-700">{formatINR(totals.reported_total)}</p>
-          <p className="text-xs text-primary-400 mt-1">{totals.reported_count} donation{totals.reported_count !== 1 ? 's' : ''} self-reported</p>
+          <p className="text-2xl font-display font-bold text-primary-700">{formatINR(safeTotals.reported_total || 0)}</p>
+          <p className="text-xs text-primary-400 mt-1">{(safeTotals.reported_count || 0)} donation{(safeTotals.reported_count || 0) !== 1 ? 's' : ''} self-reported</p>
         </div>
 
         <div className="bg-green-50 rounded-xl p-4">
@@ -71,8 +72,8 @@ export default function DonationTracker({ totals, target, compact = false }: Pro
             <CheckCircle className="w-4 h-4 text-green-500" />
             <span className="text-xs text-green-700 font-medium uppercase tracking-wide">Verified</span>
           </div>
-          <p className="text-2xl font-display font-bold text-green-700">{formatINR(totals.verified_total)}</p>
-          <p className="text-xs text-green-400 mt-1">{totals.verified_count} donation{totals.verified_count !== 1 ? 's' : ''} confirmed</p>
+          <p className="text-2xl font-display font-bold text-green-700">{formatINR(safeTotals.verified_total || 0)}</p>
+          <p className="text-xs text-green-400 mt-1">{(safeTotals.verified_count || 0)} donation{(safeTotals.verified_count || 0) !== 1 ? 's' : ''} confirmed</p>
         </div>
       </div>
 

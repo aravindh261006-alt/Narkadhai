@@ -10,8 +10,13 @@ export default function AlbumsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    albumsApi.list().then(setAlbums).catch(() => {}).finally(() => setLoading(false));
+    albumsApi.list()
+      .then(res => setAlbums(Array.isArray(res) ? res : []))
+      .catch(() => setAlbums([]))
+      .finally(() => setLoading(false));
   }, []);
+
+  const safeAlbums = Array.isArray(albums) ? albums : [];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 animate-[slide-up_0.6s_ease-out]">
@@ -35,7 +40,7 @@ export default function AlbumsPage() {
             </div>
           ))}
         </div>
-      ) : albums.length === 0 ? (
+      ) : safeAlbums.length === 0 ? (
         <div className="text-center py-24 text-gray-400">
           <Camera className="w-20 h-20 mx-auto mb-6 opacity-20" />
           <p className="text-xl font-display">No albums yet</p>
@@ -43,7 +48,7 @@ export default function AlbumsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {albums.map(album => (
+          {safeAlbums.map(album => (
             <Link
               key={album.id}
               to={`/albums/${album.id}`}

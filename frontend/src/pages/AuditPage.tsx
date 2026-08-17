@@ -10,8 +10,13 @@ export default function AuditPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    auditApi.list().then(setDocs).catch(() => {}).finally(() => setLoading(false));
+    auditApi.list()
+      .then(res => setDocs(Array.isArray(res) ? res : []))
+      .catch(() => setDocs([]))
+      .finally(() => setLoading(false));
   }, []);
+
+  const safeDocs = Array.isArray(docs) ? docs : [];
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 animate-[slide-up_0.6s_ease-out]">
@@ -42,7 +47,7 @@ export default function AuditPage() {
             </div>
           ))}
         </div>
-      ) : docs.length === 0 ? (
+      ) : safeDocs.length === 0 ? (
         <div className="text-center py-20 text-gray-400">
           <FileText className="w-16 h-16 mx-auto mb-4 opacity-20" />
           <p className="text-lg font-display">No audit documents yet</p>
@@ -50,7 +55,7 @@ export default function AuditPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {docs.map(doc => (
+          {safeDocs.map(doc => (
             <div key={doc.id} className="bg-white rounded-xl p-5 border border-primary-100 shadow-sm flex items-center justify-between gap-4 card-hover">
               <div className="flex items-start gap-4 flex-1 min-w-0">
                 <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">

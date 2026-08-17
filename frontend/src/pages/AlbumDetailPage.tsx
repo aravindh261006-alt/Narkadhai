@@ -50,14 +50,14 @@ export default function AlbumDetailPage() {
         {album.description && <p className="text-gray-600 mt-3 max-w-2xl leading-relaxed">{album.description}</p>}
       </div>
 
-      {album.photos.length === 0 ? (
+      {(!album.photos || !Array.isArray(album.photos) || album.photos.length === 0) ? (
         <div className="text-center py-20 text-gray-400">
           <Camera className="w-16 h-16 mx-auto mb-4 opacity-20" />
           <p>No photos in this album yet.</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {album.photos.map(photo => (
+          {(Array.isArray(album.photos) ? album.photos : []).map(photo => (
             <button
               key={photo.id}
               onClick={() => setLightbox(photo.photo_url)}

@@ -36,10 +36,15 @@ export default function AdminAlbums() {
   const [newAlbum, setNewAlbum] = useState({ home_name: '', visit_date: '', location: '', contact_number: '', description: '' });
   const [editAlbum, setEditAlbum] = useState({ home_name: '', visit_date: '', location: '', contact_number: '', description: '' });
 
-  const load = () => albumsApi.list().then(setAlbums).catch(() => {}).finally(() => setLoading(false));
+  const load = () => albumsApi.list()
+    .then(res => setAlbums(Array.isArray(res) ? res : []))
+    .catch(() => setAlbums([]))
+    .finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
-  const loadAlbum = (id: string) => albumsApi.get(id).then(setSelected).catch(() => {});
+  const loadAlbum = (id: string) => albumsApi.get(id)
+    .then(res => setSelected(res ? { ...res, photos: Array.isArray(res.photos) ? res.photos : [] } : null))
+    .catch(() => {});
 
   const handleCreate = async () => {
     if (!newAlbum.home_name || !newAlbum.visit_date) return toast.error('Home name and visit date are required');
@@ -142,8 +147,8 @@ export default function AdminAlbums() {
           {/* Album list */}
           <div className="md:col-span-1 space-y-3">
             {loading ? [...Array(4)].map((_, i) => <div key={i} className="h-20 bg-white rounded-xl animate-pulse" />) :
-              albums.length === 0 ? <p className="text-gray-400 text-sm">No albums yet.</p> :
-              albums.map(a => (
+              (!Array.isArray(albums) || albums.length === 0) ? <p className="text-gray-400 text-sm">No albums yet.</p> :
+              (Array.isArray(albums) ? albums : []).map(a => (
                 <button key={a.id} onClick={() => loadAlbum(a.id)}
                   className={`w-full text-left p-4 rounded-xl border transition-all flex items-center justify-between ${selected?.id === a.id ? 'bg-primary-50 border-primary-300' : 'bg-white border-gray-100 hover:border-primary-200'}`}>
                   <div>
@@ -168,7 +173,7 @@ export default function AdminAlbums() {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="font-display font-bold text-gray-800">{selected.home_name}</h3>
-                    <p className="text-xs text-gray-400">{formatDate(selected.visit_date)} · {selected.photos.length} photo{selected.photos.length !== 1 ? 's' : ''}</p>
+                    <p className="text-xs text-gray-400">{formatDate(selected.visit_date)} · {(Array.isArray(selected.photos) ? selected.photos.length : 0)} photo{(Array.isArray(selected.photos) ? selected.photos.length : 0) !== 1 ? 's' : ''}</p>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={openEdit} className="p-2 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-primary-50 transition-all" title="Edit details">
@@ -207,11 +212,11 @@ export default function AdminAlbums() {
                 </label>
 
                 {/* Photos grid */}
-                {selected.photos.length === 0 ? (
+                {(!Array.isArray(selected.photos) || selected.photos.length === 0) ? (
                   <p className="text-center text-gray-400 text-sm py-6">No photos yet</p>
                 ) : (
                   <div className="grid grid-cols-3 gap-3">
-                    {selected.photos.map(p => (
+                    {(Array.isArray(selected.photos) ? selected.photos : []).map(p => (
                       <div key={p.id} className="relative aspect-square rounded-xl overflow-hidden group">
                         <img src={p.photo_url} alt={p.caption || ''} className="w-full h-full object-cover" />
                         <button onClick={() => handleDeletePhoto(selected.id, p.id)}

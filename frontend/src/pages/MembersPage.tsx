@@ -8,8 +8,13 @@ export default function MembersPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    membersApi.list().then(setMembers).catch(() => {}).finally(() => setLoading(false));
+    membersApi.list()
+      .then(res => setMembers(Array.isArray(res) ? res : []))
+      .catch(() => setMembers([]))
+      .finally(() => setLoading(false));
   }, []);
+
+  const safeMembers = Array.isArray(members) ? members : [];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 animate-[slide-up_0.6s_ease-out]">
@@ -31,7 +36,7 @@ export default function MembersPage() {
             </div>
           ))}
         </div>
-      ) : members.length === 0 ? (
+      ) : safeMembers.length === 0 ? (
         <div className="text-center py-20 text-gray-400">
           <Users className="w-16 h-16 mx-auto mb-4 opacity-30" />
           <p className="text-lg">No members added yet.</p>
@@ -39,7 +44,7 @@ export default function MembersPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {members.map(member => (
+          {safeMembers.map(member => (
             <div key={member.id} className="bg-white rounded-2xl p-6 shadow-sm border border-primary-100 card-hover text-center">
               <div className="mb-4">
                 {member.photo_url ? (

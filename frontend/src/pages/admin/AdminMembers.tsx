@@ -25,7 +25,10 @@ export default function AdminMembers() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  const load = () => membersApi.list().then(setMembers).catch(() => {}).finally(() => setLoading(false));
+  const load = () => membersApi.list()
+    .then(res => setMembers(Array.isArray(res) ? res : []))
+    .catch(() => setMembers([]))
+    .finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
   const openCreate = () => { setEditing(null); setForm(emptyForm); setShowForm(true); };
@@ -59,36 +62,58 @@ export default function AdminMembers() {
     try {
       await membersApi.delete(id);
       toast.success('Member deleted');
-      setMembers(prev => prev.filter(m => m.id !== id));
+      load();
     } catch {
       toast.error('Failed to delete');
     }
   };
 
+  const handlePhotoUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage.from('member-photos').upload(path, file);
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from('member-photos').getPublicUrl(data.path);
+      setForm(p => ({ ...p, photo_url: publicUrl }));
+      toast.success('Photo uploaded');
+    } catch {
+      toast.error('Photo upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const safeMembers = Array.isArray(members) ? members : [];
+
   return (
     <AdminLayout>
       <div className="p-8">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="font-display text-3xl font-bold text-gray-800">Members</h1>
             <p className="text-gray-500 text-sm mt-1">Manage team members displayed on the public page.</p>
           </div>
-          <button onClick={openCreate} className="inline-flex items-center gap-2 bg-primary-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-primary-800 transition-colors">
+          <button
+            onClick={openCreate}
+            className="inline-flex items-center gap-2 bg-primary-700 hover:bg-primary-800 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all"
+          >
             <Plus className="w-4 h-4" /> Add Member
           </button>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, i) => <div key={i} className="h-40 bg-white rounded-2xl animate-pulse" />)}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => <div key={i} className="h-28 bg-white rounded-2xl animate-pulse" />)}
           </div>
-        ) : members.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">
-            <p>No members yet. Add your first one!</p>
+        ) : safeMembers.length === 0 ? (
+          <div className="text-center py-20 text-gray-400 bg-white rounded-2xl border border-dashed border-gray-200">
+            <p>No members added yet.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {members.map(m => (
+            {safeMembers.map(m => (
               <div key={m.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-start gap-4">
                 <div className="w-14 h-14 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0 text-xl font-bold text-primary-600">
                   {m.photo_url ? (

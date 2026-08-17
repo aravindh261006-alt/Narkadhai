@@ -55,7 +55,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
-          {filteredNavItems.map(item => {
+          {(Array.isArray(filteredNavItems) ? filteredNavItems : []).map(item => {
             const active = item.exact
               ? location.pathname === item.to
               : location.pathname.startsWith(item.to);
