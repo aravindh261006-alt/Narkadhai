@@ -1,7 +1,12 @@
 import axios from 'axios';
 import { supabase } from './supabase';
 
-const BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+let rawBase = (import.meta.env.VITE_API_BASE_URL as string) || '/api';
+rawBase = rawBase.replace(/\/+$/, '');
+if ((rawBase.startsWith('http://') || rawBase.startsWith('https://')) && !rawBase.endsWith('/api')) {
+  rawBase = `${rawBase}/api`;
+}
+const BASE = rawBase;
 
 const api = axios.create({ baseURL: BASE });
 
