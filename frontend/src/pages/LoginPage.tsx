@@ -65,7 +65,7 @@ export default function LoginPage() {
       }
 
       toast.success('Welcome back!');
-      navigate('/admin');
+      navigate('/admin', { replace: true });
     } catch (err: any) {
       const msg = err?.message || 'Login failed';
       if (msg === 'Failed to fetch' || msg.includes('Failed to fetch')) {
