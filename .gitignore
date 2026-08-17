@@ -19,7 +19,6 @@ __pycache__/
 dist/
 .venv/
 venv/
-.python-version
 
 # Vercel
 .vercel/
