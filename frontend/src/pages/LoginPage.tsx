@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Heart, Loader2, Eye, EyeOff } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { adminApi } from '../lib/api';
 
 export default function LoginPage() {
@@ -16,6 +16,12 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isSupabaseConfigured) {
+      toast.error('Supabase is not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to Vercel Environment Variables.');
+      return;
+    }
+
     setLoading(true);
     try {
       let authResult;
@@ -39,13 +45,18 @@ export default function LoginPage() {
           toast.error('This account is not authorized to access the admin area.');
           return;
         }
-        // Other errors (network etc.) — still let through, will be caught in AdminRoute
+        // Other errors (network/backend offline etc.) — still let through, will be caught in AdminRoute
       }
 
       toast.success('Welcome back!');
       navigate('/admin');
     } catch (err: any) {
-      toast.error(err.message || 'Login failed');
+      const msg = err?.message || 'Login failed';
+      if (msg === 'Failed to fetch' || msg.includes('Failed to fetch')) {
+        toast.error('Unable to reach Supabase. Please verify VITE_SUPABASE_URL is correctly set in Vercel settings.');
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Heart, Loader2, Eye, EyeOff } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -12,6 +12,12 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      toast.error('Supabase is not configured in environment variables.');
+      navigate('/login');
+      return;
+    }
+
     // Check if we are authenticated (have a session) from the invite hash
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
