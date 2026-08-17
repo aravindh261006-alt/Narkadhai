@@ -165,7 +165,8 @@ async def add_admin(
     # 2. Call generate_link to generate the Supabase invitation link
     invite_link = None
     try:
-        redirect_url = f"{cfg.FRONTEND_URL}/reset-password"
+        frontend_base = cfg.FRONTEND_URL.split(",")[0].strip().rstrip("/")
+        redirect_url = f"{frontend_base}/reset-password"
         link_res = db.auth.admin.generate_link({
             "type": "invite",
             "email": email_val,

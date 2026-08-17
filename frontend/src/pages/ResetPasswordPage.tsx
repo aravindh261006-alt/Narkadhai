@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Heart, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Heart, Loader2, Eye, EyeOff, CheckCircle2, AlertCircle, KeyRound, ArrowLeft } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 export default function ResetPasswordPage() {
@@ -10,32 +10,103 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [hasValidSession, setHasValidSession] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      toast.error('Supabase is not configured in environment variables.');
-      navigate('/login');
+      setErrorMessage('Supabase is not configured. Please check Vercel environment variables.');
+      setCheckingSession(false);
       return;
     }
 
-    // Check if we are authenticated (have a session) from the invite hash
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        // If there's no session, wait a brief second for supabase to parse hash,
-        // otherwise they might just be visiting without a link.
-        setTimeout(async () => {
-          const { data: { session: retrySession } } = await supabase.auth.getSession();
-          if (!retrySession) {
-            toast.error('No active session. Please check your invitation link.');
-            navigate('/login');
+    let isMounted = true;
+
+    // Parse URL hash for tokens or errors
+    const hash = window.location.hash ? window.location.hash.substring(1) : '';
+    const hashParams = new URLSearchParams(hash);
+    const searchParams = new URLSearchParams(window.location.search);
+
+    const error = hashParams.get('error') || searchParams.get('error');
+    const errorDescription = hashParams.get('error_description') || searchParams.get('error_description');
+
+    if (error || errorDescription) {
+      if (isMounted) {
+        setErrorMessage(errorDescription || error || 'This reset link is invalid or has expired.');
+        setCheckingSession(false);
+      }
+      return;
+    }
+
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+
+    async function initSession() {
+      // If tokens are in hash, explicitly set session
+      if (accessToken && refreshToken) {
+        try {
+          const { error: setErr } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (!setErr && isMounted) {
+            setHasValidSession(true);
+            setCheckingSession(false);
+            return;
           }
-        }, 1500);
+        } catch (e) {
+          console.warn('[ResetPassword] Error setting session from hash:', e);
+        }
+      }
+
+      // Check current session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        if (isMounted) {
+          setHasValidSession(true);
+          setCheckingSession(false);
+        }
+        return;
+      }
+
+      // Give Supabase client a moment to parse hash automatically
+      setTimeout(async () => {
+        if (!isMounted) return;
+        const { data: { session: retrySession } } = await supabase.auth.getSession();
+        if (retrySession) {
+          setHasValidSession(true);
+          setCheckingSession(false);
+        } else {
+          setHasValidSession(false);
+          setCheckingSession(false);
+          setErrorMessage('No active reset session found. Please request a new password reset link.');
+        }
+      }, 1200);
+    }
+
+    initSession();
+
+    // Listen for auth events (e.g. PASSWORD_RECOVERY)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return;
+      if (event === 'PASSWORD_RECOVERY' || (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'USER_UPDATED'))) {
+        setHasValidSession(true);
+        setCheckingSession(false);
+        setErrorMessage(null);
       }
     });
-  }, [navigate]);
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (password !== confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -49,73 +120,139 @@ export default function ResetPasswordPage() {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      toast.success('Password set successfully! Redirecting...');
+
+      // Sign out after setting password so user logs in cleanly with new password
+      await supabase.auth.signOut();
+
+      setSuccess(true);
+      toast.success('Password updated successfully! Please log in with your new password.');
+
       setTimeout(() => {
-        navigate('/admin');
-      }, 1000);
+        navigate('/login');
+      }, 2000);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to set password');
+      toast.error(err?.message || 'Failed to set password');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-900 to-primary-700 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md animate-[slide-up_0.6s_ease-out]">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <div className="w-14 h-14 bg-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-700/20">
             <Heart className="w-7 h-7 text-amber-400 fill-amber-400" />
           </div>
-          <h1 className="font-display text-3xl font-bold text-primary-800">Set Password</h1>
-          <p className="text-gray-400 text-sm mt-1">Set your admin account password</p>
+          <h1 className="font-display text-3xl font-bold text-primary-800">Set New Password</h1>
+          <p className="text-gray-400 text-sm mt-1">Narkadhai Admin Security</p>
         </div>
 
-        <form onSubmit={handleReset} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
-            <div className="relative">
-              <input
-                type={showPass ? 'text' : 'password'}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm"
-                placeholder="Choose a strong password"
-                id="reset-password-input"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPass(!showPass)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+        {checkingSession ? (
+          <div className="py-12 text-center space-y-4">
+            <Loader2 className="w-10 h-10 text-primary-600 animate-spin mx-auto" />
+            <p className="text-sm font-medium text-gray-600">Verifying your reset link...</p>
+          </div>
+        ) : errorMessage && !hasValidSession ? (
+          <div className="text-center py-6 space-y-6">
+            <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto">
+              <AlertCircle className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="font-display text-lg font-bold text-gray-800 mb-1">Reset Link Expired or Invalid</h3>
+              <p className="text-gray-500 text-sm">{errorMessage}</p>
+            </div>
+            <div className="pt-2">
+              <Link
+                to="/login"
+                className="inline-flex items-center justify-center gap-2 w-full bg-primary-700 hover:bg-primary-800 text-white py-3.5 px-4 rounded-xl font-semibold text-sm transition-all shadow-md shadow-primary-700/20"
               >
-                {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
+                <ArrowLeft className="w-4 h-4" /> Return to Login
+              </Link>
             </div>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-            <input
-              type={showPass ? 'text' : 'password'}
-              value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
-              required
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm"
-              placeholder="Retype password"
-              id="confirm-password-input"
-            />
+        ) : success ? (
+          <div className="text-center py-6 space-y-6">
+            <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="font-display text-xl font-bold text-gray-800 mb-1">Password Changed!</h3>
+              <p className="text-gray-500 text-sm">Your new password is set. Redirecting to login...</p>
+            </div>
+            <div className="pt-2">
+              <Link
+                to="/login"
+                className="inline-flex items-center justify-center gap-2 w-full bg-primary-700 hover:bg-primary-800 text-white py-3.5 px-4 rounded-xl font-semibold text-sm transition-all"
+              >
+                Go to Login Now
+              </Link>
+            </div>
           </div>
+        ) : (
+          <form onSubmit={handleReset} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+              <div className="relative">
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm"
+                  placeholder="At least 6 characters"
+                  id="reset-password-input"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  tabIndex={-1}
+                >
+                  {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            id="reset-password-submit"
-            className="w-full bg-primary-700 hover:bg-primary-800 text-white py-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-          >
-            {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Saving password...</> : 'Save Password'}
-          </button>
-        </form>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+              <input
+                type={showPass ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm"
+                placeholder="Re-enter your new password"
+                id="confirm-password-input"
+              />
+            </div>
+
+            {password && confirmPassword && (
+              <div className={`text-xs flex items-center gap-1.5 ${password === confirmPassword ? 'text-emerald-600' : 'text-amber-600'}`}>
+                <KeyRound className="w-3.5 h-3.5" />
+                {password === confirmPassword ? 'Passwords match' : 'Passwords do not match yet'}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || password.length < 6 || password !== confirmPassword}
+              id="reset-password-submit"
+              className="w-full bg-primary-700 hover:bg-primary-800 text-white py-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-primary-700/20"
+            >
+              {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Setting password...</> : 'Set New Password & Continue'}
+            </button>
+
+            <div className="text-center pt-2">
+              <Link to="/login" className="text-primary-600 hover:text-primary-800 text-xs font-medium hover:underline">
+                Back to Login
+              </Link>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

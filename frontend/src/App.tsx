@@ -1,7 +1,9 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
+import { supabase } from './lib/supabase';
 
 // Public pages
 import HomePage from './pages/HomePage';
@@ -36,9 +38,48 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Automatically catches Supabase password recovery / invite tokens in the URL
+ * or auth state and redirects to /reset-password so users never see a blank page or default home.
+ */
+function AuthRedirectHandler() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+
+    const isRecoveryOrInvite =
+      hash.includes('type=recovery') ||
+      hash.includes('type=invite') ||
+      search.includes('type=recovery') ||
+      search.includes('type=invite') ||
+      hash.includes('access_token=');
+
+    if (isRecoveryOrInvite && location.pathname !== '/reset-password') {
+      navigate(`/reset-password${hash}${search}`, { replace: true });
+      return;
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY' && location.pathname !== '/reset-password') {
+        navigate('/reset-password', { replace: true });
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate, location]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <AuthRedirectHandler />
       <Toaster
         position="top-right"
         toastOptions={{
@@ -58,7 +99,7 @@ export default function App() {
         <Route path="/donate" element={<PublicLayout><DonatePage /></PublicLayout>} />
         <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
 
-        {/* Login */}
+        {/* Login & Password Reset */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
