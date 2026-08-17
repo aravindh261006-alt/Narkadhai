@@ -68,23 +68,6 @@ export default function AdminMembers() {
     }
   };
 
-  const handlePhotoUpload = async (file: File) => {
-    setUploading(true);
-    try {
-      const ext = file.name.split('.').pop() || 'jpg';
-      const path = `${Date.now()}.${ext}`;
-      const { data, error } = await supabase.storage.from('member-photos').upload(path, file);
-      if (error) throw error;
-      const { data: { publicUrl } } = supabase.storage.from('member-photos').getPublicUrl(data.path);
-      setForm(p => ({ ...p, photo_url: publicUrl }));
-      toast.success('Photo uploaded');
-    } catch {
-      toast.error('Photo upload failed');
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const safeMembers = Array.isArray(members) ? members : [];
 
   return (
