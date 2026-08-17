@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Heart, LayoutDashboard, DollarSign, Users, Camera, FileText, Settings, LogOut, Shield } from 'lucide-react';
+import { Heart, LayoutDashboard, IndianRupee, Users, Camera, FileText, Settings, LogOut, Shield } from 'lucide-react';
 import { adminApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react';
 
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { to: '/admin/donations', label: 'Donations', icon: DollarSign },
+  { to: '/admin/donations', label: 'Donations', icon: IndianRupee },
   { to: '/admin/members', label: 'Members', icon: Users },
   { to: '/admin/albums', label: 'Albums', icon: Camera },
   { to: '/admin/audit', label: 'Audit Docs', icon: FileText },

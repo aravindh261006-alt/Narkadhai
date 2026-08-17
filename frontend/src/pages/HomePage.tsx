@@ -12,26 +12,21 @@ function InstagramIcon({ className }: { className?: string }) {
   );
 }
 import DisclaimerBanner from '../components/ui/DisclaimerBanner';
-import DonationTracker from '../components/ui/DonationTracker';
-import { donationsApi, settingsApi, albumsApi } from '../lib/api';
+import { settingsApi, albumsApi } from '../lib/api';
 import { formatDate } from '../lib/utils';
-import type { DonationTotals, Settings, Album } from '../types';
+import type { Settings, Album } from '../types';
 
 export default function HomePage() {
-  const [totals, setTotals] = useState<DonationTotals>({ reported_total: 0, verified_total: 0, reported_count: 0, verified_count: 0 });
   const [settings, setSettings] = useState<Settings>({});
   const [albums, setAlbums] = useState<Album[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
-      donationsApi.totals().then(setTotals).catch(() => {}),
       settingsApi.get().then(setSettings).catch(() => {}),
       albumsApi.list().then((a: any) => setAlbums(Array.isArray(a) ? a.slice(0, 3) : [])).catch(() => setAlbums([])),
-    ]).finally(() => setLoading(false));
+    ]);
   }, []);
 
-  const target = parseFloat(settings.donation_target_amount || '100000');
   const instagramUrl = settings.instagram_url || 'https://www.instagram.com/narkadhai';
   const instagramHandle = settings.instagram_handle || '@narkadhai';
 
@@ -81,24 +76,6 @@ export default function HomePage() {
 
         {/* Disclaimer */}
         <DisclaimerBanner variant="general" />
-
-        {/* Donation Tracker */}
-        <section>
-          <div className="text-center mb-8">
-            <h2 className="font-display text-3xl font-bold text-primary-800 mb-2">Live Donation Tracker</h2>
-            <p className="text-gray-500">Every rupee is counted transparently.</p>
-          </div>
-          {loading ? (
-            <div className="h-48 bg-gray-100 rounded-2xl animate-pulse" />
-          ) : (
-            <DonationTracker totals={totals} target={target} />
-          )}
-          <div className="text-center mt-4">
-            <Link to="/donate" className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-800 font-medium transition-colors">
-              Make a donation <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </section>
 
         {/* Mission summary */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">

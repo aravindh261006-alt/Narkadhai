@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { DollarSign, TrendingUp, Mail, Clock, CheckCircle } from 'lucide-react';
+import { IndianRupee, TrendingUp, Mail, Clock, CheckCircle } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { adminApi } from '../../lib/api';
 import { formatINR, formatDate } from '../../lib/utils';
@@ -38,7 +38,7 @@ export default function AdminDashboard() {
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               {[
-                { label: 'Reported Total', value: formatINR(totals.reported_total || 0), sub: `${totals.reported_count || 0} donations`, icon: DollarSign, color: 'bg-blue-50 text-blue-600' },
+                { label: 'Reported Total', value: formatINR(totals.reported_total || 0), sub: `${totals.reported_count || 0} donations`, icon: IndianRupee, color: 'bg-blue-50 text-blue-600' },
                 { label: 'Verified Total', value: formatINR(totals.verified_total || 0), sub: `${totals.verified_count || 0} confirmed`, icon: CheckCircle, color: 'bg-green-50 text-green-600' },
                 { label: 'Donation Target', value: formatINR(totals.target || 0), sub: `${Math.round(verifiedPct)}% reached`, icon: TrendingUp, color: 'bg-amber-50 text-amber-600' },
                 { label: 'Unread Messages', value: data?.unread_messages || 0, sub: 'contact messages', icon: Mail, color: 'bg-purple-50 text-purple-600' },

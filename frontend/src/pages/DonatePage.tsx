@@ -3,10 +3,9 @@ import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { QrCode, Upload, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import DisclaimerBanner from '../components/ui/DisclaimerBanner';
-import DonationTracker from '../components/ui/DonationTracker';
 import { donationsApi, settingsApi } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import type { DonationTotals, Settings } from '../types';
+import type { Settings } from '../types';
 
 interface DonationForm {
   donor_name: string;
@@ -19,7 +18,6 @@ interface DonationForm {
 type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
 
 export default function DonatePage() {
-  const [totals, setTotals] = useState<DonationTotals>({ reported_total: 0, verified_total: 0, reported_count: 0, verified_count: 0 });
   const [settings, setSettings] = useState<Settings>({});
   const [submitState, setSubmitState] = useState<SubmitState>('idle');
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
@@ -29,13 +27,8 @@ export default function DonatePage() {
   const { register, handleSubmit, reset, formState: { errors } } = useForm<DonationForm>();
 
   useEffect(() => {
-    Promise.all([
-      donationsApi.totals().then(setTotals).catch(() => {}),
-      settingsApi.get().then(setSettings).catch(() => {}),
-    ]);
+    settingsApi.get().then(setSettings).catch(() => {});
   }, []);
-
-  const target = parseFloat(settings.donation_target_amount || '100000');
 
   const onSubmit = async (data: DonationForm) => {
     // Honeypot check
@@ -76,8 +69,6 @@ export default function DonatePage() {
       setSubmitState('success');
       reset();
       setScreenshotFile(null);
-      // Refresh totals
-      donationsApi.totals().then(setTotals).catch(() => {});
       toast.success('Thank you! Your donation has been recorded.');
     } catch (err: any) {
       setSubmitState('error');
@@ -105,10 +96,9 @@ export default function DonatePage() {
       <DisclaimerBanner variant="donate" className="mb-10" />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Left: QR + Tracker */}
-        <div className="space-y-8">
-          {/* QR Code */}
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-primary-100 text-center">
+        {/* Left: QR Code */}
+        <div>
+          <div className="bg-white rounded-2xl p-8 shadow-sm border border-primary-100 text-center sticky top-24">
             <h2 className="font-display text-2xl font-bold text-primary-800 mb-2">Scan & Pay via UPI</h2>
             <p className="text-gray-500 text-sm mb-6">Use any UPI app — GPay, PhonePe, Paytm, etc.</p>
             {settings.qr_code_url ? (
@@ -123,11 +113,8 @@ export default function DonatePage() {
                 <p className="text-gray-400 text-sm text-center">QR code will appear here once uploaded by admin</p>
               </div>
             )}
-            <p className="text-xs text-gray-400 mt-4">After paying, fill in the form below to report your donation.</p>
+            <p className="text-xs text-gray-400 mt-4">After paying, fill in the form to report your donation.</p>
           </div>
-
-          {/* Tracker */}
-          <DonationTracker totals={totals} target={target} />
         </div>
 
         {/* Right: I've Donated form */}

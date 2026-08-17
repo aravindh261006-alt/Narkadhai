@@ -47,13 +47,15 @@ export default function AdminSettings() {
     if (!qrFile) return;
     setUploadingQr(true);
     try {
-      const { data, error } = await supabase.storage.from('qr-codes').upload('payment-qr.png', qrFile, { upsert: true });
+      const ext = qrFile.name.split('.').pop() || 'png';
+      const path = `payment-qr-${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage.from('qr-codes').upload(path, qrFile, { upsert: true });
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('qr-codes').getPublicUrl(data.path);
       setSettings(prev => ({ ...prev, qr_code_url: publicUrl }));
       // Also save immediately
       await settingsApi.update({ qr_code_url: publicUrl });
-      toast.success('QR code uploaded!');
+      toast.success('QR code uploaded & saved!');
       setQrFile(null);
     } catch { toast.error('QR upload failed'); } finally { setUploadingQr(false); }
   };

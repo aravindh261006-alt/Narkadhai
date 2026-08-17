@@ -118,7 +118,8 @@ export default function AdminAlbums() {
       const { data: { publicUrl } } = supabase.storage.from('album-photos').getPublicUrl(uploadData.path);
       await albumsApi.addPhoto(albumId, { photo_url: publicUrl, caption: '' });
       toast.success('Photo added');
-      loadAlbum(albumId);
+      await loadAlbum(albumId);
+      load();
     } catch { toast.error('Upload failed'); } finally { setUploading(false); }
   };
 

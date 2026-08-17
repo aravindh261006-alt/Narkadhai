@@ -12,7 +12,7 @@ const messages = {
   },
   audit: {
     title: 'Self-conducted audit — for transparency purposes only',
-    body: 'Narkadhai is not a certified or registered nonprofit organization. The documents on this page are self-prepared financial records shared voluntarily for transparency. They have NOT been audited by a chartered accountant or any regulatory body.',
+    body: 'These are self-conducted records for transparency purposes only. Narkadhai is not a certified or registered nonprofit organization.',
   },
   general: {
     title: 'Narkadhai is not a certified or registered organization',

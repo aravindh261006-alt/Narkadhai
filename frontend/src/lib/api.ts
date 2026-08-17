@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { supabase } from './supabase';
+import { supabase, isSupabaseConfigured } from './supabase';
 
 let rawBase = (import.meta.env.VITE_API_BASE_URL as string) || '/api';
 rawBase = rawBase.replace(/\/+$/, '');
@@ -24,12 +24,42 @@ export default api;
 // --- Typed API helpers ---
 
 export const settingsApi = {
-  get: () => api.get('/settings').then(r => r.data),
+  get: async () => {
+    try {
+      const res = await api.get('/settings');
+      if (res.data && Object.keys(res.data).length > 0) return res.data;
+    } catch (e) {
+      console.warn('Backend settings get failed, trying Supabase directly', e);
+    }
+    if (isSupabaseConfigured) {
+      try {
+        const { data } = await supabase.from('settings').select('*');
+        if (Array.isArray(data)) {
+          return Object.fromEntries(data.map((r: any) => [r.key, r.value]));
+        }
+      } catch {}
+    }
+    return {};
+  },
   update: (updates: Record<string, string>) => api.put('/settings', { updates }).then(r => r.data),
 };
 
 export const membersApi = {
-  list: () => api.get('/members').then(r => r.data),
+  list: async () => {
+    try {
+      const res = await api.get('/members');
+      if (Array.isArray(res.data)) return res.data;
+    } catch (e) {
+      console.warn('Backend members list failed, trying Supabase directly', e);
+    }
+    if (isSupabaseConfigured) {
+      try {
+        const { data } = await supabase.from('members').select('*').order('display_order');
+        if (Array.isArray(data)) return data;
+      } catch {}
+    }
+    return [];
+  },
   create: (data: object) => api.post('/members', data).then(r => r.data),
   update: (id: string, data: object) => api.put(`/members/${id}`, data).then(r => r.data),
   delete: (id: string) => api.delete(`/members/${id}`),
@@ -37,8 +67,39 @@ export const membersApi = {
 };
 
 export const albumsApi = {
-  list: () => api.get('/albums').then(r => r.data),
-  get: (id: string) => api.get(`/albums/${id}`).then(r => r.data),
+  list: async () => {
+    try {
+      const res = await api.get('/albums');
+      if (Array.isArray(res.data)) return res.data;
+    } catch (e) {
+      console.warn('Backend albums list failed, trying Supabase directly', e);
+    }
+    if (isSupabaseConfigured) {
+      try {
+        const { data } = await supabase.from('albums').select('*').order('visit_date', { ascending: false });
+        if (Array.isArray(data)) return data;
+      } catch {}
+    }
+    return [];
+  },
+  get: async (id: string) => {
+    try {
+      const res = await api.get(`/albums/${id}`);
+      if (res.data) return res.data;
+    } catch (e) {
+      console.warn(`Backend album ${id} failed, trying Supabase directly`, e);
+    }
+    if (isSupabaseConfigured) {
+      try {
+        const { data: album } = await supabase.from('albums').select('*').eq('id', id).single();
+        if (album) {
+          const { data: photos } = await supabase.from('album_photos').select('*').eq('album_id', id);
+          return { ...album, photos: photos || [] };
+        }
+      } catch {}
+    }
+    return null;
+  },
   create: (data: object) => api.post('/albums', data).then(r => r.data),
   update: (id: string, data: object) => api.put(`/albums/${id}`, data).then(r => r.data),
   delete: (id: string) => api.delete(`/albums/${id}`),
@@ -48,7 +109,21 @@ export const albumsApi = {
 };
 
 export const auditApi = {
-  list: () => api.get('/audit-docs').then(r => r.data),
+  list: async () => {
+    try {
+      const res = await api.get('/audit-docs');
+      if (Array.isArray(res.data)) return res.data;
+    } catch (e) {
+      console.warn('Backend audit-docs failed, trying Supabase directly', e);
+    }
+    if (isSupabaseConfigured) {
+      try {
+        const { data } = await supabase.from('audit_docs').select('*').order('uploaded_at', { ascending: false });
+        if (Array.isArray(data)) return data;
+      } catch {}
+    }
+    return [];
+  },
   create: (data: object) => api.post('/audit-docs', data).then(r => r.data),
   delete: (id: string) => api.delete(`/audit-docs/${id}`),
   getUploadUrl: () => api.post('/audit-docs/upload-url').then(r => r.data),

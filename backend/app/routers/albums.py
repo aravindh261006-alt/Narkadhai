@@ -105,6 +105,12 @@ async def add_photo(
     }).execute()
     if not resp.data:
         raise HTTPException(status_code=500, detail="Failed to add photo")
+
+    # If album has no cover photo, set this photo as cover
+    album = db.table("albums").select("cover_photo_url").eq("id", album_id).single().execute()
+    if album.data and not album.data.get("cover_photo_url"):
+        db.table("albums").update({"cover_photo_url": payload.photo_url}).eq("id", album_id).execute()
+
     return resp.data[0]
 
 

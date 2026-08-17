@@ -39,6 +39,8 @@ export default function AdminMembers() {
   };
 
   const handleSave = async () => {
+    if (!form.name.trim()) return toast.error('Name is required');
+    if (!form.role.trim()) return toast.error('Role is required');
     setSaving(true);
     try {
       if (editing) {
