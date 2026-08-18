@@ -75,17 +75,26 @@ def _decode_token(token: str) -> dict:
 
 def _get_admin_record(email: str) -> dict | None:
     """Check authorized_admins table using service role client (case-insensitive)."""
-    db = get_supabase()
-    clean_email = email.strip().lower()
-    resp = (
-        db.table("authorized_admins")
-        .select("email, name, role")
-        .ilike("email", clean_email)
-        .execute()
-    )
-    if resp.data and len(resp.data) > 0:
-        return resp.data[0]
-    return None
+    try:
+        db = get_supabase()
+        clean_email = email.strip().lower()
+        resp = (
+            db.table("authorized_admins")
+            .select("email, name, role")
+            .ilike("email", clean_email)
+            .execute()
+        )
+        if resp.data and len(resp.data) > 0:
+            return resp.data[0]
+        return None
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to query authorized_admins table for %s: %s", email, e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error verifying admin authorization: {str(e)}",
+        )
 
 
 async def get_current_admin(

@@ -4,8 +4,9 @@ FastAPI application factory.
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import settings as cfg
 from app.routers import (
@@ -17,13 +18,20 @@ from app.routers import (
     admin,
 )
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Narkadhai API starting up (env=%s)", cfg.ENVIRONMENT)
+    if not cfg.SUPABASE_URL or not cfg.SUPABASE_SERVICE_ROLE_KEY:
+        logger.warning("WARNING: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set in environment!")
+    else:
+        logger.info("Supabase configuration detected (URL=%s)", cfg.SUPABASE_URL[:20] + "..." if len(cfg.SUPABASE_URL) > 20 else cfg.SUPABASE_URL)
     yield
     logger.info("Narkadhai API shutting down")
 
@@ -38,6 +46,24 @@ def create_app() -> FastAPI:
         redoc_url="/api/redoc",
         openapi_url="/api/openapi.json",
     )
+
+    # Global unhandled exception handler — ensures full traceback in Render logs + helpful JSON response
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        logger.error(
+            "Unhandled exception on %s %s: %s",
+            request.method,
+            request.url.path,
+            exc,
+            exc_info=True,
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": f"Server Error on {request.method} {request.url.path}: {str(exc)}",
+                "type": type(exc).__name__,
+            },
+        )
 
     # CORS — allow deployed frontend origins, Vercel app domains, custom domains, and localhost
     frontend_origins = [url.strip().rstrip('/') for url in cfg.FRONTEND_URL.split(',') if url.strip()]
