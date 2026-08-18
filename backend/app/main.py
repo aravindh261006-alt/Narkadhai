@@ -72,7 +72,12 @@ def create_app() -> FastAPI:
     app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])
     app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
+    @app.get("/")
+    @app.get("/health")
     @app.get("/api/health")
+    @app.head("/")
+    @app.head("/health")
+    @app.head("/api/health")
     async def health():
         return {"status": "ok", "service": "narkadhai-api"}
 
