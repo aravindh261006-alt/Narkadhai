@@ -10,7 +10,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings as cfg
 from app.routers import (
     albums,
-    audit,
     contact,
     donations,
     members,
@@ -70,7 +69,6 @@ def create_app() -> FastAPI:
     app.include_router(contact.router, prefix="/api/contact", tags=["contact"])
     app.include_router(members.router, prefix="/api/members", tags=["members"])
     app.include_router(albums.router, prefix="/api/albums", tags=["albums"])
-    app.include_router(audit.router, prefix="/api/audit-docs", tags=["audit"])
     app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])
     app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 

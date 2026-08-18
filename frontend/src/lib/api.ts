@@ -1,7 +1,15 @@
 import axios from 'axios';
 import { supabase, isSupabaseConfigured } from './supabase';
 
-let rawBase = (import.meta.env.VITE_API_BASE_URL as string) || '/api';
+let rawBase = (import.meta.env.VITE_API_BASE_URL as string) || '';
+if (!rawBase || rawBase === '/api') {
+  // If running in production browser on Vercel or custom domain and no explicit base URL is set, target Render backend
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    rawBase = 'https://narkadhai.onrender.com/api';
+  } else {
+    rawBase = '/api';
+  }
+}
 rawBase = rawBase.replace(/\/+$/, '');
 if ((rawBase.startsWith('http://') || rawBase.startsWith('https://')) && !rawBase.endsWith('/api')) {
   rawBase = `${rawBase}/api`;
@@ -36,7 +44,7 @@ export const settingsApi = {
   get: async () => {
     try {
       const res = await api.get('/settings');
-      if (res.data && Object.keys(res.data).length > 0) return res.data;
+      if (res.data && typeof res.data === 'object' && Object.keys(res.data).length > 0) return res.data;
     } catch (e) {
       console.warn('Backend settings get failed, trying Supabase directly', e);
     }
@@ -94,7 +102,7 @@ export const albumsApi = {
   get: async (id: string) => {
     try {
       const res = await api.get(`/albums/${id}`);
-      if (res.data) return res.data;
+      if (res.data && typeof res.data === 'object') return res.data;
     } catch (e) {
       console.warn(`Backend album ${id} failed, trying Supabase directly`, e);
     }
@@ -115,27 +123,6 @@ export const albumsApi = {
   addPhoto: (albumId: string, data: object) => api.post(`/albums/${albumId}/photos`, data).then(r => r.data),
   deletePhoto: (albumId: string, photoId: string) => api.delete(`/albums/${albumId}/photos/${photoId}`),
   getUploadUrl: () => api.post('/albums/upload-url').then(r => r.data),
-};
-
-export const auditApi = {
-  list: async () => {
-    try {
-      const res = await api.get('/audit-docs');
-      if (Array.isArray(res.data)) return res.data;
-    } catch (e) {
-      console.warn('Backend audit-docs failed, trying Supabase directly', e);
-    }
-    if (isSupabaseConfigured) {
-      try {
-        const { data } = await supabase.from('audit_docs').select('*').order('uploaded_at', { ascending: false });
-        if (Array.isArray(data)) return data;
-      } catch {}
-    }
-    return [];
-  },
-  create: (data: object) => api.post('/audit-docs', data).then(r => r.data),
-  delete: (id: string) => api.delete(`/audit-docs/${id}`),
-  getUploadUrl: () => api.post('/audit-docs/upload-url').then(r => r.data),
 };
 
 export const donationsApi = {
@@ -160,4 +147,6 @@ export const adminApi = {
   addAdmin: (data: object) => api.post('/admin/admins', data).then(r => r.data),
   removeAdmin: (id: string) => api.delete(`/admin/admins/${id}`),
   me: () => api.get('/admin/me').then(r => r.data),
+  changeEmail: (new_email: string) => api.post('/admin/change-email', { new_email }).then(r => r.data),
+  changePassword: (new_password: string) => api.post('/admin/change-password', { new_password }).then(r => r.data),
 };

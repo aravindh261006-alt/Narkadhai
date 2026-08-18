@@ -30,7 +30,7 @@ export default function AboutPage() {
         </p>
 
         <p>
-          We collect voluntary donations from people who share our vision and channel them directly to the homes we visit. Every donation is tracked, every rupee is accounted for, and all our records are published openly on our Audit page.
+          We collect voluntary donations from people who share our vision and channel them directly to the homes we visit. Every donation is tracked, every rupee is accounted for, and our community updates are shared openly.
         </p>
 
         <h2 className="font-display text-2xl font-bold text-primary-800 mt-8">How we work</h2>

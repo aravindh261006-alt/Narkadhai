@@ -11,7 +11,6 @@ import MissionPage from './pages/MissionPage';
 import MembersPage from './pages/MembersPage';
 import AlbumsPage from './pages/AlbumsPage';
 import AlbumDetailPage from './pages/AlbumDetailPage';
-import AuditPage from './pages/AuditPage';
 import DonatePage from './pages/DonatePage';
 import ContactPage from './pages/ContactPage';
 
@@ -22,9 +21,9 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminDonations from './pages/admin/AdminDonations';
 import AdminMembers from './pages/admin/AdminMembers';
 import AdminAlbums from './pages/admin/AdminAlbums';
-import AdminAudit from './pages/admin/AdminAudit';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminAccess from './pages/admin/AdminAccess';
+import AdminProfile from './pages/admin/AdminProfile';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
@@ -56,7 +55,6 @@ export default function App() {
           <Route path="/members" element={<PublicLayout><MembersPage /></PublicLayout>} />
           <Route path="/albums" element={<PublicLayout><AlbumsPage /></PublicLayout>} />
           <Route path="/albums/:id" element={<PublicLayout><AlbumDetailPage /></PublicLayout>} />
-          <Route path="/audit" element={<PublicLayout><AuditPage /></PublicLayout>} />
           <Route path="/donate" element={<PublicLayout><DonatePage /></PublicLayout>} />
           <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
 
@@ -69,9 +67,9 @@ export default function App() {
           <Route path="/admin/donations" element={<AdminRoute><AdminDonations /></AdminRoute>} />
           <Route path="/admin/members" element={<AdminRoute><AdminMembers /></AdminRoute>} />
           <Route path="/admin/albums" element={<AdminRoute><AdminAlbums /></AdminRoute>} />
-          <Route path="/admin/audit" element={<AdminRoute><AdminAudit /></AdminRoute>} />
           <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
           <Route path="/admin/admins" element={<AdminRoute><AdminAccess /></AdminRoute>} />
+          <Route path="/admin/profile" element={<AdminRoute><AdminProfile /></AdminRoute>} />
         </Routes>
       </BrowserRouter>
     </ErrorBoundary>

@@ -29,6 +29,7 @@ class SettingsUpdate(BaseModel):
 
 
 @router.get("")
+@router.get("/")
 async def get_settings():
     """Public: return only non-sensitive settings."""
     db = get_supabase()
@@ -41,6 +42,11 @@ async def get_settings():
 
 
 @router.put("")
+@router.put("/")
+@router.post("")
+@router.post("/")
+@router.patch("")
+@router.patch("/")
 async def update_settings(
     payload: SettingsUpdate,
     admin: Annotated[AdminUser, Depends(require_owner)],

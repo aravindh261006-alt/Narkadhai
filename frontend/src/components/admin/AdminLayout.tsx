@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Heart, LayoutDashboard, IndianRupee, Users, Camera, FileText, Settings, LogOut, Shield } from 'lucide-react';
+import { Heart, LayoutDashboard, IndianRupee, Users, Camera, Settings, LogOut, Shield, UserCircle } from 'lucide-react';
 import { adminApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -11,9 +11,9 @@ const navItems = [
   { to: '/admin/donations', label: 'Donations', icon: IndianRupee },
   { to: '/admin/members', label: 'Members', icon: Users },
   { to: '/admin/albums', label: 'Albums', icon: Camera },
-  { to: '/admin/audit', label: 'Audit Docs', icon: FileText },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
   { to: '/admin/admins', label: 'Admin Access', icon: Shield },
+  { to: '/admin/profile', label: 'My Account', icon: UserCircle },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

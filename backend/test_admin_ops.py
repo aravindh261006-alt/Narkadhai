@@ -89,12 +89,20 @@ class TestAdminEndpoints(unittest.TestCase):
         app.dependency_overrides[require_owner] = mock_owner_admin
         mock_supabase.table().upsert().execute.return_value.data = []
 
+        # Test PUT
         resp = client.put(
             "/api/settings",
             json={"updates": {"qr_code_url": "https://storage.supabase.co/qr-codes/qr.png", "donation_target_amount": "500000"}},
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), {"ok": True})
+
+        # Test POST
+        resp_post = client.post(
+            "/api/settings",
+            json={"updates": {"donation_target_amount": "600000"}},
+        )
+        self.assertEqual(resp_post.status_code, 200)
 
     @patch("app.routers.albums.get_supabase", return_value=mock_supabase)
     def test_create_update_delete_album(self, mock_get_db):
@@ -148,28 +156,6 @@ class TestAdminEndpoints(unittest.TestCase):
         resp_del = client.delete("/api/albums/a1/photos/p1")
         self.assertEqual(resp_del.status_code, 204)
 
-    @patch("app.routers.audit.get_supabase", return_value=mock_supabase)
-    def test_create_delete_audit_doc(self, mock_get_db):
-        """Test uploading and deleting an audit document."""
-        app.dependency_overrides[require_audit_or_owner] = mock_owner_admin
-        app.dependency_overrides[require_owner] = mock_owner_admin
-        mock_supabase.table().insert().execute.return_value.data = [
-            {"id": "doc1", "title": "Audit 2026", "file_url": "https://storage.supabase.co/audit-docs/doc1.pdf", "uploaded_by": "support.narkadhai@gmail.com"}
-        ]
-        mock_supabase.table().delete().eq().execute.return_value.data = []
-
-        # Create
-        resp = client.post(
-            "/api/audit-docs",
-            json={"title": "Audit 2026", "description": "Annual report", "file_url": "https://storage.supabase.co/audit-docs/doc1.pdf"},
-        )
-        self.assertEqual(resp.status_code, 201)
-        self.assertEqual(resp.json()["title"], "Audit 2026")
-
-        # Delete
-        resp_del = client.delete("/api/audit-docs/doc1")
-        self.assertEqual(resp_del.status_code, 204)
-
     @patch("app.routers.donations.get_supabase", return_value=mock_supabase)
     def test_verify_donation(self, mock_get_db):
         """Test verifying a donation status."""
@@ -205,6 +191,46 @@ class TestAdminEndpoints(unittest.TestCase):
         resp = client.get("/api/admin/me")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["email"], "support.narkadhai@gmail.com")
+
+    @patch("app.routers.admin.get_supabase", return_value=mock_supabase)
+    def test_change_email(self, mock_get_db):
+        """Test self-service email change for logged in admin."""
+        app.dependency_overrides[require_audit_or_owner] = mock_owner_admin
+
+        # Check existing returns empty (email is available)
+        mock_supabase.table().select().eq().execute.return_value.data = []
+        mock_supabase.table().update().ilike().execute.return_value.data = [
+            {"email": "newowner@narkadhai.org", "name": "newowner", "role": "owner"}
+        ]
+
+        user1 = MagicMock()
+        user1.id = "u1"
+        user1.email = "support.narkadhai@gmail.com"
+        mock_supabase.auth.admin.list_users.return_value = [user1]
+
+        resp = client.post(
+            "/api/admin/change-email",
+            json={"new_email": "newowner@narkadhai.org"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["email"], "newowner@narkadhai.org")
+
+    @patch("app.routers.admin.get_supabase", return_value=mock_supabase)
+    def test_change_password(self, mock_get_db):
+        """Test self-service password change for logged in admin."""
+        app.dependency_overrides[require_audit_or_owner] = mock_owner_admin
+
+        user1 = MagicMock()
+        user1.id = "u1"
+        user1.email = "support.narkadhai@gmail.com"
+        mock_supabase.auth.admin.list_users.return_value = [user1]
+
+        resp = client.post(
+            "/api/admin/change-password",
+            json={"new_password": "newStrongPassword123!"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["ok"], True)
 
     @patch("app.services.auth_service.get_supabase")
     def test_auth_fallback_with_mock_user(self, mock_get_db):

@@ -10,14 +10,6 @@ export interface Member {
   created_at: string;
 }
 
-export interface AuditDoc {
-  id: string;
-  title: string;
-  description: string | null;
-  file_url: string;
-  uploaded_by: string;
-  uploaded_at: string;
-}
 
 export interface Album {
   id: string;

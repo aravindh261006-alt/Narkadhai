@@ -41,7 +41,6 @@ export default function Footer() {
                 { to: '/mission', label: 'Mission' },
                 { to: '/members', label: 'Members' },
                 { to: '/albums', label: 'Albums' },
-                { to: '/audit', label: 'Audit & Transparency' },
                 { to: '/donate', label: 'Donate' },
                 { to: '/contact', label: 'Contact' },
               ].map(l => (

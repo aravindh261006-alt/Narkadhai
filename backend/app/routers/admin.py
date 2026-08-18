@@ -4,6 +4,7 @@ import re
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from app.config import settings as cfg
 from app.db import get_supabase
@@ -253,3 +254,101 @@ async def remove_admin(
             logger.error("Failed to delete user %s from Supabase Auth: %s", email_val, e)
 
     return {"ok": True}
+
+
+class ChangeEmailPayload(BaseModel):
+    new_email: str
+
+
+class ChangePasswordPayload(BaseModel):
+    new_password: str
+
+
+@router.post("/change-email")
+async def change_my_email(
+    payload: ChangeEmailPayload,
+    admin: Annotated[AdminUser, Depends(require_audit_or_owner)],
+):
+    """Admin self-service: update own email address in authorized_admins and Supabase Auth."""
+    new_email_val = payload.new_email.strip().lower()
+    if not new_email_val or not re.match(r"[^@]+@[^@]+\.[^@]+", new_email_val):
+        raise HTTPException(status_code=400, detail="Invalid email address.")
+
+    old_email_val = admin.email.strip().lower()
+    if old_email_val == new_email_val:
+        raise HTTPException(status_code=400, detail="New email must be different from current email.")
+
+    db = get_supabase()
+
+    # Check if new email is already in authorized_admins
+    existing = db.table("authorized_admins").select("id").eq("email", new_email_val).execute()
+    if existing.data:
+        raise HTTPException(status_code=400, detail="An admin with this email already exists.")
+
+    # 1. Update in authorized_admins table
+    update_res = (
+        db.table("authorized_admins")
+        .update({"email": new_email_val, "name": new_email_val.split("@")[0]})
+        .ilike("email", old_email_val)
+        .execute()
+    )
+    if not update_res.data:
+        raise HTTPException(status_code=404, detail="Admin record not found to update.")
+
+    # 2. Update in Supabase Auth (auth.users)
+    try:
+        users = db.auth.admin.list_users()
+        auth_user_id = None
+        for u in users:
+            if u.email and u.email.lower().strip() == old_email_val:
+                auth_user_id = u.id
+                break
+
+        if auth_user_id:
+            db.auth.admin.update_user_by_id(
+                auth_user_id,
+                {"email": new_email_val, "email_confirm": True}
+            )
+            logger.info("Updated Supabase Auth email from %s to %s", old_email_val, new_email_val)
+    except Exception as e:
+        logger.warning("Failed to update email in Supabase Auth: %s", e)
+
+    return {"ok": True, "email": new_email_val, "message": "Email updated successfully. Please use your new email for future logins."}
+
+
+@router.post("/change-password")
+async def change_my_password(
+    payload: ChangePasswordPayload,
+    admin: Annotated[AdminUser, Depends(require_audit_or_owner)],
+):
+    """Admin self-service: update own password."""
+    new_pass = payload.new_password
+    if not new_pass or len(new_pass) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+
+    db = get_supabase()
+    clean_email = admin.email.strip().lower()
+
+    try:
+        users = db.auth.admin.list_users()
+        auth_user_id = None
+        for u in users:
+            if u.email and u.email.lower().strip() == clean_email:
+                auth_user_id = u.id
+                break
+
+        if not auth_user_id:
+            raise HTTPException(status_code=404, detail="User account not found in auth service.")
+
+        db.auth.admin.update_user_by_id(
+            auth_user_id,
+            {"password": new_pass}
+        )
+        logger.info("Password updated successfully for admin %s", clean_email)
+        return {"ok": True, "message": "Password changed successfully."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to update password in Supabase Auth: %s", e)
+        raise HTTPException(status_code=500, detail=f"Failed to update password: {e}")
+

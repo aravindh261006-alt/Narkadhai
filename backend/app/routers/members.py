@@ -27,6 +27,7 @@ class MemberUpdate(BaseModel):
 
 
 @router.get("")
+@router.get("/")
 async def list_members():
     """Public: list all members ordered by display_order."""
     db = get_supabase()
@@ -35,6 +36,7 @@ async def list_members():
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_member(
     payload: MemberCreate,
     admin: Annotated[AdminUser, Depends(require_owner)],
@@ -48,6 +50,7 @@ async def create_member(
 
 
 @router.put("/{member_id}")
+@router.patch("/{member_id}")
 async def update_member(
     member_id: str,
     payload: MemberUpdate,

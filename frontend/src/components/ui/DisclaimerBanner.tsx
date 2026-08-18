@@ -1,7 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 
 interface Props {
-  variant?: 'donate' | 'audit' | 'general';
+  variant?: 'donate' | 'general';
   className?: string;
 }
 
@@ -9,10 +9,6 @@ const messages = {
   donate: {
     title: 'Important: Narkadhai is not a registered organization',
     body: 'Donations made through this page are voluntary contributions to an informal initiative. They are NOT eligible for tax exemption under Section 80G or any other provision. No official receipt will be issued. This is a self-reported, transparent contribution — we verify every donation against our bank/UPI statement and publish all records.',
-  },
-  audit: {
-    title: 'Self-conducted audit — for transparency purposes only',
-    body: 'These are self-conducted records for transparency purposes only. Narkadhai is not a certified or registered nonprofit organization.',
   },
   general: {
     title: 'Narkadhai is not a certified or registered organization',

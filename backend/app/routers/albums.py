@@ -30,6 +30,7 @@ class PhotoAdd(BaseModel):
 
 
 @router.get("")
+@router.get("/")
 async def list_albums():
     """Public: list all albums ordered by visit_date desc."""
     db = get_supabase()
@@ -51,6 +52,7 @@ async def get_album(album_id: str):
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_album(
     payload: AlbumCreate,
     admin: Annotated[AdminUser, Depends(require_owner)],
@@ -64,6 +66,7 @@ async def create_album(
 
 
 @router.put("/{album_id}")
+@router.patch("/{album_id}")
 async def update_album(
     album_id: str,
     payload: AlbumUpdate,
@@ -91,6 +94,7 @@ async def delete_album(
 
 
 @router.post("/{album_id}/photos", status_code=status.HTTP_201_CREATED)
+@router.post("/{album_id}/photos/", status_code=status.HTTP_201_CREATED)
 async def add_photo(
     album_id: str,
     payload: PhotoAdd,

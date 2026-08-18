@@ -141,8 +141,8 @@ export default function AdminAccess() {
                     onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
                     className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm bg-white"
                   >
-                    <option value="audit">Audit (Review & verify donations, audit docs)</option>
-                    <option value="owner">Owner (Full access to settings, members, albums, admins)</option>
+                    <option value="audit">Reviewer (Review & verify donations)</option>
+                    <option value="owner">Owner (Full access to all settings, members, albums, admins)</option>
                   </select>
                 </div>
 
@@ -160,9 +160,9 @@ export default function AdminAccess() {
               </form>
 
               {warningMessage && (
-                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 leading-relaxed word-break">
-                  <p className="font-semibold">⚠️ Action Required:</p>
-                  <p className="mt-1">{warningMessage}</p>
+                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 leading-relaxed">
+                  <p className="font-semibold text-amber-900 mb-1">⚠️ Invitation Details:</p>
+                  <p className="break-all">{warningMessage}</p>
                 </div>
               )}
             </div>

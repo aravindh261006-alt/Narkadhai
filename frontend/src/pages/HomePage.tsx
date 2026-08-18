@@ -82,7 +82,7 @@ export default function HomePage() {
           {[
             { icon: Heart, title: 'We Visit', desc: 'We personally visit children\'s homes and old-age homes to understand their needs.' },
             { icon: Users, title: 'We Connect', desc: 'Voluntary donors contribute directly to support the people at these homes.' },
-            { icon: BookOpen, title: 'We Report', desc: 'Every rupee is tracked and published openly on our audit page.' },
+            { icon: BookOpen, title: 'We Share', desc: 'Photos, stories, and donation progress from every visit are shared openly.' },
           ].map(({ icon: Icon, title, desc }) => (
             <div key={title} className="bg-white rounded-2xl p-6 shadow-sm border border-primary-100 card-hover">
               <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center mb-4">

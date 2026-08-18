@@ -8,7 +8,6 @@ const navLinks = [
   { to: '/mission', label: 'Mission' },
   { to: '/members', label: 'Members' },
   { to: '/albums', label: 'Albums' },
-  { to: '/audit', label: 'Audit' },
   { to: '/donate', label: 'Donate', highlight: true },
   { to: '/contact', label: 'Contact' },
 ];
