@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     OWNER_EMAIL: str = ""         # notification recipient
 
     # CORS
-    FRONTEND_URL: str = "http://localhost:5173"
+    FRONTEND_URL: str = "https://narkadhai.vercel.app,http://localhost:5173"
 
     # Environment
     ENVIRONMENT: str = "development"

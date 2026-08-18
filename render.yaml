@@ -22,4 +22,4 @@ services:
       - key: OWNER_EMAIL
         sync: false
       - key: FRONTEND_URL
-        sync: false
+        value: https://narkadhai.vercel.app,http://localhost:5173

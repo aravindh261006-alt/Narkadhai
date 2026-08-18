@@ -61,7 +61,8 @@ export default function AdminAlbums() {
       setNewAlbum({ home_name: '', visit_date: '', location: '', contact_number: '', description: '' });
       load();
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Failed to create');
+      console.error('Failed to create album:', err);
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to create album');
     } finally { setCreating(false); }
   };
 
@@ -94,7 +95,8 @@ export default function AdminAlbums() {
       loadAlbum(selected.id);
       load();
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Failed to update details');
+      console.error('Failed to update album details:', err);
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to update details');
     } finally { setSavingDetails(false); }
   };
 
@@ -105,7 +107,10 @@ export default function AdminAlbums() {
       toast.success('Album deleted');
       setSelected(null);
       load();
-    } catch { toast.error('Failed to delete'); }
+    } catch (err: any) {
+      console.error('Failed to delete album:', err);
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to delete album');
+    }
   };
 
   const handlePhotoUpload = async (albumId: string, file: File) => {
@@ -120,7 +125,10 @@ export default function AdminAlbums() {
       toast.success('Photo added');
       await loadAlbum(albumId);
       load();
-    } catch { toast.error('Upload failed'); } finally { setUploading(false); }
+    } catch (uploadErr: any) {
+      console.error('Photo upload failed:', uploadErr);
+      toast.error(uploadErr?.message || uploadErr?.response?.data?.detail || 'Photo upload failed. Check Supabase storage bucket & RLS policies.');
+    } finally { setUploading(false); }
   };
 
   const handleDeletePhoto = async (albumId: string, photoId: string) => {

@@ -39,32 +39,53 @@ class AdminUser:
 
 def _decode_token(token: str) -> dict:
     """Decode and verify a Supabase JWT."""
+    # 1. Attempt local verification if JWT secret is available
+    if cfg.SUPABASE_JWT_SECRET and cfg.SUPABASE_JWT_SECRET not in ("your-jwt-secret-here", ""):
+        try:
+            payload = jwt.decode(
+                token,
+                cfg.SUPABASE_JWT_SECRET.strip(),
+                algorithms=["HS256"],
+                options={"verify_aud": False},
+            )
+            return payload
+        except JWTError as e:
+            logger.warning("Local JWT decode failed (%s). Attempting verification via Supabase Auth API...", e)
+
+    # 2. Fallback: Verify token directly against Supabase Auth service
     try:
-        payload = jwt.decode(
-            token,
-            cfg.SUPABASE_JWT_SECRET,
-            algorithms=["HS256"],
-            options={"verify_aud": False},
-        )
-        return payload
-    except JWTError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid or expired token: {e}",
-        )
+        db = get_supabase()
+        user_resp = db.auth.get_user(token)
+        if user_resp and user_resp.user:
+            user = user_resp.user
+            return {
+                "sub": user.id,
+                "email": user.email,
+                "user_metadata": user.user_metadata or {},
+                "app_metadata": user.app_metadata or {},
+            }
+    except Exception as e:
+        logger.error("Supabase auth.get_user verification failed: %s", e)
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or expired authentication token. Please log in again.",
+    )
 
 
 def _get_admin_record(email: str) -> dict | None:
-    """Check authorized_admins table using service role client."""
+    """Check authorized_admins table using service role client (case-insensitive)."""
     db = get_supabase()
+    clean_email = email.strip().lower()
     resp = (
         db.table("authorized_admins")
         .select("email, name, role")
-        .eq("email", email)
-        .single()
+        .ilike("email", clean_email)
         .execute()
     )
-    return resp.data
+    if resp.data and len(resp.data) > 0:
+        return resp.data[0]
+    return None
 
 
 async def get_current_admin(
@@ -83,7 +104,7 @@ async def get_current_admin(
     if not record:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This account is not authorized to access the admin area.",
+            detail=f"The account '{email}' is not on the authorized admins list.",
         )
 
     return AdminUser(email=record["email"], name=record["name"], role=record["role"])

@@ -39,7 +39,8 @@ export default function AdminSettings() {
       await settingsApi.update(updates);
       toast.success('Settings saved!');
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Failed to save settings');
+      console.error('Failed to save settings:', err);
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to save settings');
     } finally { setSaving(false); }
   };
 
@@ -57,7 +58,10 @@ export default function AdminSettings() {
       await settingsApi.update({ qr_code_url: publicUrl });
       toast.success('QR code uploaded & saved!');
       setQrFile(null);
-    } catch { toast.error('QR upload failed'); } finally { setUploadingQr(false); }
+    } catch (qrErr: any) {
+      console.error('QR upload failed:', qrErr);
+      toast.error(qrErr?.message || qrErr?.response?.data?.detail || 'QR upload failed. Check Supabase storage bucket & RLS policies.');
+    } finally { setUploadingQr(false); }
   };
 
   if (loading) {

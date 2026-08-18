@@ -38,8 +38,9 @@ export default function AdminAudit() {
         if (error) throw error;
         const { data: { publicUrl } } = supabase.storage.from('audit-docs').getPublicUrl(data.path);
         fileUrl = publicUrl;
-      } catch (e) {
-        toast.error('File upload failed');
+      } catch (uploadErr: any) {
+        console.error('Audit doc file upload failed:', uploadErr);
+        toast.error(uploadErr?.message || uploadErr?.response?.data?.detail || 'File upload failed. Check Supabase storage bucket & RLS policies.');
         setSaving(false);
         setUploading(false);
         return;
@@ -54,7 +55,8 @@ export default function AdminAudit() {
       setFileToUpload(null);
       load();
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Failed to save');
+      console.error('Failed to save audit document:', err);
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to save document');
     } finally { setSaving(false); }
   };
 
@@ -64,7 +66,10 @@ export default function AdminAudit() {
       await auditApi.delete(id);
       toast.success('Document deleted');
       setDocs(prev => (Array.isArray(prev) ? prev : []).filter(d => d.id !== id));
-    } catch { toast.error('Failed to delete'); }
+    } catch (err: any) {
+      console.error('Failed to delete audit document:', err);
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to delete');
+    }
   };
 
   const safeDocs = Array.isArray(docs) ? docs : [];

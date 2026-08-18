@@ -40,15 +40,28 @@ def create_app() -> FastAPI:
         openapi_url="/api/openapi.json",
     )
 
-    # CORS — allow deployed frontend origins and localhost
+    # CORS — allow deployed frontend origins, Vercel app domains, custom domains, and localhost
     frontend_origins = [url.strip().rstrip('/') for url in cfg.FRONTEND_URL.split(',') if url.strip()]
-    origins = list(set(frontend_origins + ["http://localhost:5173", "http://localhost:4173", "https://localhost:5173"]))
+    default_origins = [
+        "https://narkadhai.vercel.app",
+        "https://narkadhai.org",
+        "https://www.narkadhai.org",
+        "http://localhost:5173",
+        "http://localhost:4173",
+        "http://localhost:3000",
+        "https://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+    ]
+    origins = list(set(frontend_origins + default_origins))
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
+        allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
         allow_headers=["*"],
+        expose_headers=["*"],
     )
 
 

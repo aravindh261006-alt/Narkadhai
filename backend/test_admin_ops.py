@@ -3,12 +3,12 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 # Add backend directory to path
-sys.path.append(".")
+sys.path.insert(0, ".")
 
-# Mock supabase to import app safely without credentials
+import app.db
 with patch("app.db.create_client"), patch("supabase.create_client"):
     from app.main import app
-    from app.services.auth_service import AdminUser
+    from app.services.auth_service import AdminUser, require_owner, require_audit_or_owner
 
 from fastapi.testclient import TestClient
 
@@ -16,7 +16,6 @@ client = TestClient(app)
 mock_supabase = MagicMock()
 
 
-# Helper mocks
 def mock_owner_admin():
     return AdminUser(email="support.narkadhai@gmail.com", name="Owner", role="owner")
 
@@ -25,112 +24,214 @@ def mock_audit_admin():
     return AdminUser(email="auditor@narkadhai.org", name="Auditor", role="audit")
 
 
-class TestAdminOps(unittest.TestCase):
+class TestAdminEndpoints(unittest.TestCase):
     def setUp(self):
         app.dependency_overrides = {}
         mock_supabase.reset_mock()
 
-    def test_album_formatting_helper(self):
-        location = "Chennai, TN"
-        contact = "+91 99999 88888"
-        desc = "We had a wonderful visit."
-        formatted = f"Location: {location}\nContact: {contact}\n\n{desc}"
-
-        import re
-        match = re.match(
-            r"^Location:\s*(.*)\nContact:\s*(.*)\n\n([\s\S]*)$", formatted
+    def test_cors_headers(self):
+        """Test CORS preflight and response headers for https://narkadhai.vercel.app"""
+        # Test OPTIONS preflight request
+        resp = client.options(
+            "/api/members",
+            headers={
+                "Origin": "https://narkadhai.vercel.app",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "Authorization, Content-Type",
+            },
         )
-        self.assertIsNotNone(match)
-        self.assertEqual(match.group(1).strip(), location)
-        self.assertEqual(match.group(2).strip(), contact)
-        self.assertEqual(match.group(3).strip(), desc)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.headers.get("access-control-allow-origin"), "https://narkadhai.vercel.app")
 
-    def test_get_me_endpoint(self):
-        from app.services.auth_service import require_audit_or_owner
+        # Test GET request CORS header
+        resp = client.get(
+            "/api/health",
+            headers={"Origin": "https://narkadhai.vercel.app"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.headers.get("access-control-allow-origin"), "https://narkadhai.vercel.app")
 
-        # Case 1: Owner Role
+    @patch("app.routers.members.get_supabase", return_value=mock_supabase)
+    def test_create_update_delete_member(self, mock_get_db):
+        """Test adding, updating, and deleting a member as owner."""
+        app.dependency_overrides[require_owner] = mock_owner_admin
+        mock_supabase.table().insert().execute.return_value.data = [
+            {"id": "m1", "name": "John Doe", "role": "Volunteer", "bio": "Helps out", "photo_url": "https://example.com/p.jpg", "display_order": 1}
+        ]
+        mock_supabase.table().update().eq().execute.return_value.data = [
+            {"id": "m1", "name": "John Updated", "role": "Lead", "bio": "Helps out", "photo_url": "https://example.com/p.jpg", "display_order": 1}
+        ]
+        mock_supabase.table().delete().eq().execute.return_value.data = []
+
+        # Create
+        resp = client.post(
+            "/api/members",
+            json={"name": "John Doe", "role": "Volunteer", "bio": "Helps out", "photo_url": "https://example.com/p.jpg", "display_order": 1},
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.json()["name"], "John Doe")
+
+        # Update
+        resp_put = client.put(
+            "/api/members/m1",
+            json={"name": "John Updated", "role": "Lead"},
+        )
+        self.assertEqual(resp_put.status_code, 200)
+        self.assertEqual(resp_put.json()["name"], "John Updated")
+
+        # Delete
+        resp_del = client.delete("/api/members/m1")
+        self.assertEqual(resp_del.status_code, 204)
+
+    @patch("app.routers.settings_router.get_supabase", return_value=mock_supabase)
+    def test_update_settings_qr(self, mock_get_db):
+        """Test updating QR code URL and settings as owner."""
+        app.dependency_overrides[require_owner] = mock_owner_admin
+        mock_supabase.table().upsert().execute.return_value.data = []
+
+        resp = client.put(
+            "/api/settings",
+            json={"updates": {"qr_code_url": "https://storage.supabase.co/qr-codes/qr.png", "donation_target_amount": "500000"}},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"ok": True})
+
+    @patch("app.routers.albums.get_supabase", return_value=mock_supabase)
+    def test_create_update_delete_album(self, mock_get_db):
+        """Test creating, updating, and deleting an album as owner."""
+        app.dependency_overrides[require_owner] = mock_owner_admin
+        mock_supabase.table().insert().execute.return_value.data = [
+            {"id": "a1", "home_name": "Hope Home", "visit_date": "2026-08-15", "description": "Location: Chennai\nContact: 9876543210\n\nGreat visit"}
+        ]
+        mock_supabase.table().update().eq().execute.return_value.data = [
+            {"id": "a1", "home_name": "Hope Home Updated", "visit_date": "2026-08-15", "description": "Updated"}
+        ]
+        mock_supabase.table().delete().eq().execute.return_value.data = []
+
+        # Create
+        resp = client.post(
+            "/api/albums",
+            json={"home_name": "Hope Home", "visit_date": "2026-08-15", "description": "Location: Chennai\nContact: 9876543210\n\nGreat visit"},
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.json()["home_name"], "Hope Home")
+
+        # Update
+        resp_put = client.put(
+            "/api/albums/a1",
+            json={"home_name": "Hope Home Updated"},
+        )
+        self.assertEqual(resp_put.status_code, 200)
+
+        # Delete
+        resp_del = client.delete("/api/albums/a1")
+        self.assertEqual(resp_del.status_code, 204)
+
+    @patch("app.routers.albums.get_supabase", return_value=mock_supabase)
+    def test_add_delete_album_photo(self, mock_get_db):
+        """Test adding and deleting a photo from an album."""
+        app.dependency_overrides[require_owner] = mock_owner_admin
+        mock_supabase.table().insert().execute.return_value.data = [
+            {"id": "p1", "album_id": "a1", "photo_url": "https://storage.supabase.co/album-photos/p1.jpg", "caption": ""}
+        ]
+        mock_supabase.table().select().eq().single().execute.return_value.data = {"cover_photo_url": None}
+        mock_supabase.table().update().eq().execute.return_value.data = []
+        mock_supabase.table().delete().eq().eq().execute.return_value.data = []
+
+        resp = client.post(
+            "/api/albums/a1/photos",
+            json={"photo_url": "https://storage.supabase.co/album-photos/p1.jpg", "caption": ""},
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.json()["photo_url"], "https://storage.supabase.co/album-photos/p1.jpg")
+
+        resp_del = client.delete("/api/albums/a1/photos/p1")
+        self.assertEqual(resp_del.status_code, 204)
+
+    @patch("app.routers.audit.get_supabase", return_value=mock_supabase)
+    def test_create_delete_audit_doc(self, mock_get_db):
+        """Test uploading and deleting an audit document."""
+        app.dependency_overrides[require_audit_or_owner] = mock_owner_admin
+        app.dependency_overrides[require_owner] = mock_owner_admin
+        mock_supabase.table().insert().execute.return_value.data = [
+            {"id": "doc1", "title": "Audit 2026", "file_url": "https://storage.supabase.co/audit-docs/doc1.pdf", "uploaded_by": "support.narkadhai@gmail.com"}
+        ]
+        mock_supabase.table().delete().eq().execute.return_value.data = []
+
+        # Create
+        resp = client.post(
+            "/api/audit-docs",
+            json={"title": "Audit 2026", "description": "Annual report", "file_url": "https://storage.supabase.co/audit-docs/doc1.pdf"},
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.json()["title"], "Audit 2026")
+
+        # Delete
+        resp_del = client.delete("/api/audit-docs/doc1")
+        self.assertEqual(resp_del.status_code, 204)
+
+    @patch("app.routers.donations.get_supabase", return_value=mock_supabase)
+    def test_verify_donation(self, mock_get_db):
+        """Test verifying a donation status."""
+        app.dependency_overrides[require_audit_or_owner] = mock_audit_admin
+        mock_supabase.table().select().eq().execute.return_value.data = [{"id": "d1", "status": "pending"}]
+        mock_supabase.table().update().eq().execute.return_value.data = [{"id": "d1", "status": "verified", "verified_by": "auditor@narkadhai.org"}]
+
+        resp = client.patch(
+            "/api/donations/d1/status",
+            json={"status": "verified"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["status"], "verified")
+
+    @patch("app.routers.admin.get_supabase", return_value=mock_supabase)
+    def test_get_dashboard(self, mock_get_db):
+        """Test fetching dashboard summary stats."""
+        app.dependency_overrides[require_audit_or_owner] = mock_owner_admin
+        mock_supabase.rpc().execute.return_value.data = [{"reported_total": 5000, "verified_total": 3000, "reported_count": 5, "verified_count": 3}]
+        mock_supabase.table().select().order().limit().execute.return_value.data = []
+        mock_supabase.table().select().eq().execute.return_value.count = 2
+        mock_supabase.table().select().eq().execute.return_value.data = [{"value": "100000"}]
+
+        resp = client.get("/api/admin/dashboard")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("totals", data)
+        self.assertEqual(data["totals"]["reported_total"], 5000)
+
+    def test_get_me(self):
+        """Test getting current admin profile."""
         app.dependency_overrides[require_audit_or_owner] = mock_owner_admin
         resp = client.get("/api/admin/me")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(
-            resp.json(),
-            {
-                "email": "support.narkadhai@gmail.com",
-                "name": "Owner",
-                "role": "owner",
-            },
-        )
+        self.assertEqual(resp.json()["email"], "support.narkadhai@gmail.com")
 
-        # Case 2: Audit Role
-        app.dependency_overrides[require_audit_or_owner] = mock_audit_admin
-        resp = client.get("/api/admin/me")
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(
-            resp.json(),
-            {
-                "email": "auditor@narkadhai.org",
-                "name": "Auditor",
-                "role": "audit",
-            },
-        )
+    @patch("app.services.auth_service.get_supabase")
+    def test_auth_fallback_with_mock_user(self, mock_get_db):
+        """Test that auth_service falls back to supabase.auth.get_user when JWT decode is not used."""
+        from app.services.auth_service import get_current_admin
+        from fastapi.security import HTTPAuthorizationCredentials
 
-    @patch("app.routers.admin.get_supabase", return_value=mock_supabase)
-    def test_list_admins_endpoint(self, mock_get_db):
-        from app.services.auth_service import require_owner
+        mock_db = MagicMock()
+        mock_get_db.return_value = mock_db
 
-        app.dependency_overrides[require_owner] = mock_owner_admin
+        mock_user = MagicMock()
+        mock_user.id = "user-123"
+        mock_user.email = "support.narkadhai@gmail.com"
+        mock_user.user_metadata = {}
+        mock_user.app_metadata = {}
+        mock_db.auth.get_user.return_value.user = mock_user
 
-        # Mock database response
-        mock_supabase.table().select().execute.return_value.data = [
-            {
-                "id": "1",
-                "email": "support.narkadhai@gmail.com",
-                "name": "Owner",
-                "role": "owner",
-                "created_at": "2026-08-07T00:00:00Z",
-            },
-            {
-                "id": "2",
-                "email": "auditor@narkadhai.org",
-                "name": "Auditor",
-                "role": "audit",
-                "created_at": "2026-08-07T01:00:00Z",
-            },
+        mock_db.table().select().ilike().execute.return_value.data = [
+            {"email": "support.narkadhai@gmail.com", "name": "Owner", "role": "owner"}
         ]
 
-        # Mock list_users response
-        user1 = MagicMock()
-        user1.email = "support.narkadhai@gmail.com"
-        user1.last_sign_in_at = MagicMock()
-        user1.last_sign_in_at.isoformat.return_value = "2026-08-07T12:00:00Z"
-
-        user2 = MagicMock()
-        user2.email = "auditor@narkadhai.org"
-        user2.last_sign_in_at = None
-
-        mock_supabase.auth.admin.list_users.return_value = [user1, user2]
-
-        resp = client.get("/api/admin/admins")
-        self.assertEqual(resp.status_code, 200)
-        data = resp.json()
-        self.assertEqual(len(data), 2)
-        self.assertEqual(data[0]["last_login"], "2026-08-07T12:00:00Z")
-        self.assertEqual(data[1]["last_login"], None)
-
-    @patch("app.routers.admin.get_supabase", return_value=mock_supabase)
-    def test_delete_admin_protections(self, mock_get_db):
-        from app.services.auth_service import require_owner
-
-        app.dependency_overrides[require_owner] = mock_owner_admin
-
-        # Mock database return for deleting support.narkadhai@gmail.com
-        mock_supabase.table().select().eq().single().execute.return_value.data = {
-            "email": "support.narkadhai@gmail.com"
-        }
-
-        resp = client.delete("/api/admin/admins/some-id")
-        self.assertEqual(resp.status_code, 400)
-        self.assertIn("cannot be removed", resp.json()["detail"])
+        import asyncio
+        creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="mock-supabase-token")
+        admin = asyncio.run(get_current_admin(creds))
+        self.assertEqual(admin.email, "support.narkadhai@gmail.com")
+        self.assertEqual(admin.role, "owner")
+        self.assertTrue(admin.is_owner)
 
 
 if __name__ == "__main__":

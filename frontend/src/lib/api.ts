@@ -12,9 +12,18 @@ const api = axios.create({ baseURL: BASE });
 
 // Attach Supabase auth token to all requests
 api.interceptors.request.use(async (config) => {
-  const { data } = await supabase.auth.getSession();
-  if (data.session?.access_token) {
-    config.headers.Authorization = `Bearer ${data.session.access_token}`;
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.access_token) {
+      if (typeof config.headers?.set === 'function') {
+        config.headers.set('Authorization', `Bearer ${data.session.access_token}`);
+      } else {
+        config.headers = config.headers || {};
+        config.headers['Authorization'] = `Bearer ${data.session.access_token}`;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to attach Supabase session token:', err);
   }
   return config;
 });

@@ -53,7 +53,8 @@ export default function AdminMembers() {
       setShowForm(false);
       load();
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Failed to save');
+      console.error('Failed to save member:', err);
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to save member');
     } finally {
       setSaving(false);
     }
@@ -191,8 +192,9 @@ export default function AdminMembers() {
                           const { data: { publicUrl } } = supabase.storage.from('member-photos').getPublicUrl(uploadData.path);
                           setForm(prev => ({ ...prev, photo_url: publicUrl }));
                           toast.success('Photo uploaded');
-                        } catch {
-                          toast.error('Upload failed');
+                        } catch (uploadErr: any) {
+                          console.error('Photo upload failed:', uploadErr);
+                          toast.error(uploadErr?.message || 'Photo upload failed. Check Supabase storage bucket & RLS policies.');
                         } finally {
                           setUploading(false);
                         }

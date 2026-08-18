@@ -202,51 +202,158 @@ grant execute on function public.get_donation_totals() to authenticated;
 -- ============================================================
 -- STORAGE BUCKETS
 -- Create these manually in the Supabase dashboard → Storage,
--- or run via Supabase Management API. The SQL below uses
--- storage schema inserts as a fallback (may require service role).
+-- or run via Supabase SQL Editor.
 -- ============================================================
 -- Bucket: album-photos (public read)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('album-photos', 'album-photos', true, 10485760, array['image/jpeg','image/png','image/webp','image/gif'])
-on conflict (id) do nothing;
+on conflict (id) do update set
+  public = true,
+  file_size_limit = 10485760,
+  allowed_mime_types = array['image/jpeg','image/png','image/webp','image/gif'];
 
--- Bucket: audit-docs (public read — PDFs)
+-- Bucket: audit-docs (public read — PDFs, images)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('audit-docs', 'audit-docs', true, 20971520, array['application/pdf','image/jpeg','image/png'])
-on conflict (id) do nothing;
+on conflict (id) do update set
+  public = true,
+  file_size_limit = 20971520,
+  allowed_mime_types = array['application/pdf','image/jpeg','image/png'];
 
 -- Bucket: member-photos (public read)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('member-photos', 'member-photos', true, 5242880, array['image/jpeg','image/png','image/webp'])
-on conflict (id) do nothing;
+on conflict (id) do update set
+  public = true,
+  file_size_limit = 5242880,
+  allowed_mime_types = array['image/jpeg','image/png','image/webp'];
 
 -- Bucket: qr-codes (public read)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('qr-codes', 'qr-codes', true, 2097152, array['image/jpeg','image/png','image/webp'])
-on conflict (id) do nothing;
+on conflict (id) do update set
+  public = true,
+  file_size_limit = 2097152,
+  allowed_mime_types = array['image/jpeg','image/png','image/webp'];
 
 -- Bucket: donation-screenshots (private — NOT public read)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('donation-screenshots', 'donation-screenshots', false, 10485760, array['image/jpeg','image/png','image/webp','application/pdf'])
-on conflict (id) do nothing;
+on conflict (id) do update set
+  public = false,
+  file_size_limit = 10485760,
+  allowed_mime_types = array['image/jpeg','image/png','image/webp','application/pdf'];
 
 -- ============================================================
--- STORAGE RLS — public buckets: anyone can read
+-- STORAGE RLS POLICIES
 -- ============================================================
+
+-- 1. Public Read Policies
+drop policy if exists "Public read album-photos" on storage.objects;
 create policy "Public read album-photos"
   on storage.objects for select
   using (bucket_id = 'album-photos');
 
+drop policy if exists "Public read audit-docs" on storage.objects;
 create policy "Public read audit-docs"
   on storage.objects for select
   using (bucket_id = 'audit-docs');
 
+drop policy if exists "Public read member-photos" on storage.objects;
 create policy "Public read member-photos"
   on storage.objects for select
   using (bucket_id = 'member-photos');
 
+drop policy if exists "Public read qr-codes" on storage.objects;
 create policy "Public read qr-codes"
   on storage.objects for select
   using (bucket_id = 'qr-codes');
 
--- donation-screenshots: NO public read policy (blocked by default)
+-- 2. Authenticated Admin Upload/Manage Policies (member-photos)
+drop policy if exists "Authenticated insert member-photos" on storage.objects;
+create policy "Authenticated insert member-photos"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'member-photos');
+
+drop policy if exists "Authenticated update member-photos" on storage.objects;
+create policy "Authenticated update member-photos"
+  on storage.objects for update
+  to authenticated
+  using (bucket_id = 'member-photos');
+
+drop policy if exists "Authenticated delete member-photos" on storage.objects;
+create policy "Authenticated delete member-photos"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'member-photos');
+
+-- 3. Authenticated Admin Upload/Manage Policies (qr-codes)
+drop policy if exists "Authenticated insert qr-codes" on storage.objects;
+create policy "Authenticated insert qr-codes"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'qr-codes');
+
+drop policy if exists "Authenticated update qr-codes" on storage.objects;
+create policy "Authenticated update qr-codes"
+  on storage.objects for update
+  to authenticated
+  using (bucket_id = 'qr-codes');
+
+drop policy if exists "Authenticated delete qr-codes" on storage.objects;
+create policy "Authenticated delete qr-codes"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'qr-codes');
+
+-- 4. Authenticated Admin Upload/Manage Policies (album-photos)
+drop policy if exists "Authenticated insert album-photos" on storage.objects;
+create policy "Authenticated insert album-photos"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'album-photos');
+
+drop policy if exists "Authenticated update album-photos" on storage.objects;
+create policy "Authenticated update album-photos"
+  on storage.objects for update
+  to authenticated
+  using (bucket_id = 'album-photos');
+
+drop policy if exists "Authenticated delete album-photos" on storage.objects;
+create policy "Authenticated delete album-photos"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'album-photos');
+
+-- 5. Authenticated Admin Upload/Manage Policies (audit-docs)
+drop policy if exists "Authenticated insert audit-docs" on storage.objects;
+create policy "Authenticated insert audit-docs"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'audit-docs');
+
+drop policy if exists "Authenticated update audit-docs" on storage.objects;
+create policy "Authenticated update audit-docs"
+  on storage.objects for update
+  to authenticated
+  using (bucket_id = 'audit-docs');
+
+drop policy if exists "Authenticated delete audit-docs" on storage.objects;
+create policy "Authenticated delete audit-docs"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'audit-docs');
+
+-- 6. Donation Screenshots Policies (Public upload, Authenticated read)
+drop policy if exists "Anyone can upload donation screenshots" on storage.objects;
+create policy "Anyone can upload donation screenshots"
+  on storage.objects for insert
+  to public
+  with check (bucket_id = 'donation-screenshots');
+
+drop policy if exists "Authenticated read donation screenshots" on storage.objects;
+create policy "Authenticated read donation screenshots"
+  on storage.objects for select
+  to authenticated
+  using (bucket_id = 'donation-screenshots');
