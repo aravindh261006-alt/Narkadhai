@@ -147,12 +147,6 @@ export default function ContactPage() {
               <span className="font-medium">{settings.instagram_handle || '@narkadhai'}</span>
             </a>
           </div>
-
-          <div className="bg-amber-50 rounded-2xl p-6 border border-amber-100">
-            <p className="text-amber-800 text-sm leading-relaxed">
-              <strong>Note:</strong> Narkadhai is an informal initiative. We are not a registered organization and do not have a physical office address. The best way to reach us is via email or Instagram.
-            </p>
-          </div>
         </div>
       </div>
     </div>

@@ -11,7 +11,6 @@ function InstagramIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-import DisclaimerBanner from '../components/ui/DisclaimerBanner';
 import { settingsApi, albumsApi } from '../lib/api';
 import { formatDate } from '../lib/utils';
 import type { Settings, Album } from '../types';
@@ -46,13 +45,8 @@ export default function HomePage() {
           <h1 className="font-display text-5xl md:text-7xl font-bold mb-6 leading-tight">
             Narkadhai
           </h1>
-          <p className="text-xl md:text-2xl text-primary-200 max-w-2xl mx-auto mb-4">
+          <p className="text-xl md:text-2xl text-primary-200 max-w-2xl mx-auto mb-10">
             {settings.mission_text?.split('.')[0] || 'An informal initiative connecting hearts with homes.'}
-          </p>
-
-          {/* Honest disclaimer in hero */}
-          <p className="text-amber-300/90 text-sm mb-10 max-w-xl mx-auto">
-            ⚠️ Narkadhai is <strong>not</strong> a certified or registered nonprofit. Donations are voluntary and not tax-exempt.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -73,9 +67,6 @@ export default function HomePage() {
       </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-20">
-
-        {/* Disclaimer */}
-        <DisclaimerBanner variant="general" />
 
         {/* Mission summary */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">

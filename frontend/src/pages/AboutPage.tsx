@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import DisclaimerBanner from '../components/ui/DisclaimerBanner';
 import { settingsApi } from '../lib/api';
 import type { Settings } from '../types';
 
@@ -18,8 +17,6 @@ export default function AboutPage() {
         <div className="w-16 h-1 bg-amber-400 rounded-full" />
       </div>
 
-      <DisclaimerBanner variant="general" className="mb-10" />
-
       <div className="prose prose-lg max-w-none text-gray-600 leading-relaxed space-y-6">
         <p className="text-xl text-gray-700 font-medium">
           {settings.about_text || 'Narkadhai was started by a group of friends who wanted to make a direct, tangible difference in their community.'}
@@ -30,7 +27,7 @@ export default function AboutPage() {
         </p>
 
         <p>
-          We collect voluntary donations from people who share our vision and channel them directly to the homes we visit. Every donation is tracked, every rupee is accounted for, and our community updates are shared openly.
+          We channel donations directly to the homes we visit to fulfill their immediate needs and create memorable moments for the residents.
         </p>
 
         <h2 className="font-display text-2xl font-bold text-primary-800 mt-8">How we work</h2>
@@ -38,9 +35,8 @@ export default function AboutPage() {
           {[
             'We identify a home that needs support and visit in person.',
             'We assess what the home needs most — supplies, funds, or simply time.',
-            'We share our findings with the community and invite voluntary donations.',
-            'We deliver the support and document everything with photos.',
-            'We publish a financial statement of all funds received and spent.',
+            'We share our findings with the community and invite support.',
+            'We deliver the support and document our visits with photos.',
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-3">
               <span className="flex-shrink-0 w-7 h-7 bg-primary-700 text-white rounded-full flex items-center justify-center text-sm font-bold">{i + 1}</span>

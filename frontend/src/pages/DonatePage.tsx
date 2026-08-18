@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { QrCode, Upload, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
-import DisclaimerBanner from '../components/ui/DisclaimerBanner';
 import { donationsApi, settingsApi } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import type { Settings } from '../types';
@@ -92,8 +91,6 @@ export default function DonatePage() {
         <h1 className="font-display text-4xl md:text-5xl font-bold text-primary-800 mt-2 mb-4">Donate</h1>
         <div className="w-16 h-1 bg-amber-400 rounded-full mx-auto" />
       </div>
-
-      <DisclaimerBanner variant="donate" className="mb-10" />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Left: QR Code */}

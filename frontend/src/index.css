@@ -109,11 +109,3 @@ h1, h2, h3, h4 {
   transform: translateY(-4px);
   box-shadow: 0 20px 40px rgba(26, 77, 58, 0.15);
 }
-
-.disclaimer-box {
-  background: linear-gradient(135deg, #fef3c7, #fef9ee);
-  border: 1px solid #fbbf24;
-  border-left: 4px solid #F5A623;
-  border-radius: 8px;
-  padding: 16px 20px;
-}
