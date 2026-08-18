@@ -138,7 +138,8 @@ export const donationsApi = {
 export const contactApi = {
   submit: (data: object) => api.post('/contact', data).then(r => r.data),
   list: () => api.get('/contact').then(r => r.data),
-  markRead: (id: string) => api.patch(`/contact/${id}/read`),
+  markRead: (id: string) => api.patch(`/contact/${id}/read`).then(r => r.data),
+  delete: (id: string) => api.delete(`/contact/${id}`),
 };
 
 export const adminApi = {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { IndianRupee, TrendingUp, Mail, Clock, CheckCircle } from 'lucide-react';
+import { IndianRupee, TrendingUp, Mail, CheckCircle } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { adminApi } from '../../lib/api';
 import { formatINR, formatDate } from '../../lib/utils';
@@ -100,7 +100,7 @@ export default function AdminDashboard() {
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-display font-bold text-gray-800">Recent Messages</h2>
-                  <Clock className="w-4 h-4 text-gray-400" />
+                  <Link to="/admin/messages" className="text-xs text-primary-600 hover:underline">View all →</Link>
                 </div>
                 <div className="space-y-3">
                   {(!data?.recent_messages || !Array.isArray(data.recent_messages) || data.recent_messages.length === 0) ? (

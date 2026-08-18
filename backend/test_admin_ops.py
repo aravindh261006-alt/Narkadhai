@@ -157,18 +157,65 @@ class TestAdminEndpoints(unittest.TestCase):
         self.assertEqual(resp_del.status_code, 204)
 
     @patch("app.routers.donations.get_supabase", return_value=mock_supabase)
-    def test_verify_donation(self, mock_get_db):
-        """Test verifying a donation status."""
+    def test_verify_and_reject_donation(self, mock_get_db):
+        """Test verifying and rejecting a donation status."""
         app.dependency_overrides[require_audit_or_owner] = mock_audit_admin
         mock_supabase.table().select().eq().execute.return_value.data = [{"id": "d1", "status": "pending"}]
         mock_supabase.table().update().eq().execute.return_value.data = [{"id": "d1", "status": "verified", "verified_by": "auditor@narkadhai.org"}]
 
+        # Test PATCH verify
         resp = client.patch(
             "/api/donations/d1/status",
             json={"status": "verified"},
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["status"], "verified")
+
+        # Test PUT reject
+        mock_supabase.table().update().eq().execute.return_value.data = [{"id": "d1", "status": "rejected", "verified_by": "auditor@narkadhai.org"}]
+        resp_put = client.put(
+            "/api/donations/d1/status",
+            json={"status": "rejected"},
+        )
+        self.assertEqual(resp_put.status_code, 200)
+        self.assertEqual(resp_put.json()["status"], "rejected")
+
+    @patch("app.routers.contact.get_supabase", return_value=mock_supabase)
+    def test_contact_messages_flow(self, mock_get_db):
+        """Test public contact form submission, admin list, mark read, and delete."""
+        # 1. Public submission
+        mock_supabase.table().insert().execute.return_value.data = [
+            {"id": "msg1", "name": "Alice", "email": "alice@example.com", "message": "Hello Narkadhai!", "is_read": False}
+        ]
+        mock_supabase.table().select().execute.return_value.data = [{"email": "support.narkadhai@gmail.com"}]
+
+        resp_submit = client.post(
+            "/api/contact",
+            json={"name": "Alice", "email": "alice@example.com", "message": "Hello Narkadhai!"},
+        )
+        self.assertEqual(resp_submit.status_code, 201)
+        self.assertIn("message", resp_submit.json())
+
+        # 2. Admin listing
+        app.dependency_overrides[require_audit_or_owner] = mock_owner_admin
+        mock_supabase.table().select().order().execute.return_value.data = [
+            {"id": "msg1", "name": "Alice", "email": "alice@example.com", "message": "Hello Narkadhai!", "is_read": False}
+        ]
+        resp_list = client.get("/api/contact")
+        self.assertEqual(resp_list.status_code, 200)
+        self.assertEqual(len(resp_list.json()), 1)
+
+        # 3. Admin mark read
+        mock_supabase.table().update().eq().execute.return_value.data = [
+            {"id": "msg1", "is_read": True}
+        ]
+        resp_read = client.patch("/api/contact/msg1/read")
+        self.assertEqual(resp_read.status_code, 200)
+
+        # 4. Admin delete
+        mock_supabase.table().delete().eq().execute.return_value.data = []
+        resp_del = client.delete("/api/contact/msg1")
+        self.assertEqual(resp_del.status_code, 204)
 
     @patch("app.routers.admin.get_supabase", return_value=mock_supabase)
     def test_get_dashboard(self, mock_get_db):

@@ -29,13 +29,18 @@ export default function AdminDonations() {
   useEffect(() => { load(); }, []);
 
   const updateStatus = async (id: string, status: 'verified' | 'rejected') => {
+    // Optimistic UI update
+    setDonations(prev => (Array.isArray(prev) ? prev : []).map(d => d.id === id ? { ...d, status } : d));
+    if (selected?.id === id) setSelected(prev => prev ? { ...prev, status } : null);
+
     try {
       await donationsApi.updateStatus(id, status);
       toast.success(`Donation marked as ${status}`);
-      setDonations(prev => (Array.isArray(prev) ? prev : []).map(d => d.id === id ? { ...d, status } : d));
-      if (selected?.id === id) setSelected(prev => prev ? { ...prev, status } : null);
-    } catch {
-      toast.error('Failed to update status');
+      await load();
+    } catch (err: any) {
+      console.error('Failed to update donation status:', err);
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to update status');
+      await load();
     }
   };
 

@@ -19,6 +19,7 @@ import LoginPage from './pages/LoginPage';
 import AdminRoute from './components/admin/AdminRoute';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminDonations from './pages/admin/AdminDonations';
+import AdminMessages from './pages/admin/AdminMessages';
 import AdminMembers from './pages/admin/AdminMembers';
 import AdminAlbums from './pages/admin/AdminAlbums';
 import AdminSettings from './pages/admin/AdminSettings';
@@ -65,6 +66,7 @@ export default function App() {
           {/* Admin (protected) */}
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/donations" element={<AdminRoute><AdminDonations /></AdminRoute>} />
+          <Route path="/admin/messages" element={<AdminRoute><AdminMessages /></AdminRoute>} />
           <Route path="/admin/members" element={<AdminRoute><AdminMembers /></AdminRoute>} />
           <Route path="/admin/albums" element={<AdminRoute><AdminAlbums /></AdminRoute>} />
           <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />

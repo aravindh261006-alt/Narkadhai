@@ -34,9 +34,16 @@ class ResendEmailService(EmailService):
     def send(self, *, to: str | list[str], subject: str, html: str) -> None:
         import resend
         resend.api_key = cfg.RESEND_API_KEY
+        recipients = to if isinstance(to, list) else [to]
+        # Clean email recipients
+        clean_recipients = [r.strip() for r in recipients if r and r.strip()]
+        if not clean_recipients:
+            logger.warning("No valid email recipients provided")
+            return
+
         params = resend.Emails.SendParams(
-            from_=cfg.EMAIL_FROM,
-            to=to if isinstance(to, list) else [to],
+            from_=cfg.EMAIL_FROM or "Narkadhai <noreply@narkadhai.org>",
+            to=clean_recipients,
             subject=subject,
             html=html,
         )
@@ -72,25 +79,34 @@ def get_email_service() -> EmailService:
 def send_donor_thankyou(
     *, donation_id: str, donor_name: str, donor_email: str, amount: float
 ) -> bool:
-    """Send thank-you email to donor. Returns True on success, False on failure (never raises)."""
+    """Send thank-you email to donor with their name and amount in INR."""
     svc = get_email_service()
     formatted_amount = _format_inr(amount)
     html = f"""
-    <div style="font-family:sans-serif;max-width:600px;margin:auto;">
-      <h2 style="color:#1A4D3A;">Thank you for your donation, {donor_name}!</h2>
-      <p>We have received your self-reported donation of <strong>{formatted_amount}</strong>.</p>
-      <p>Our team will verify it against our records shortly. Once verified, it will appear on our public donation tracker.</p>
-      <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
-      <p style="color:#888;font-size:13px;">
-        <strong>Important:</strong> Narkadhai is not a certified or registered nonprofit organization.
-        Donations are voluntary contributions and are not eligible for tax exemption under any law.
-        This is an acknowledgement of your self-reported contribution, not an official receipt.
+    <div style="font-family:'Segoe UI',Roboto,Helvetica,sans-serif;max-width:600px;margin:auto;padding:32px;background:#FAF7F2;border-radius:16px;border:1px solid #e7e0d6;color:#1e293b;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="color:#1A4D3A;margin:0 0 8px;font-size:26px;">Thank You, {donor_name}!</h1>
+        <p style="color:#64748b;font-size:16px;margin:0;">We are deeply grateful for your generous contribution.</p>
+      </div>
+
+      <div style="background:#ffffff;padding:24px;border-radius:12px;border:1px solid #e2e8f0;margin:24px 0;text-align:center;">
+        <p style="color:#64748b;font-size:14px;margin:0 0 6px;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Donation Amount</p>
+        <p style="color:#1A4D3A;font-size:32px;font-weight:bold;margin:0;">{formatted_amount}</p>
+      </div>
+
+      <p style="font-size:15px;line-height:1.6;color:#334155;">
+        Your support enables us to continue visiting and directly supporting children's homes and old-age homes. Every contribution brings care, warmth, and smiles to those who need it most.
       </p>
-      <p style="color:#888;font-size:13px;">With gratitude,<br>The Narkadhai Team</p>
+
+      <div style="margin-top:32px;padding-top:20px;border-top:1px solid #e2e8f0;text-align:center;color:#64748b;font-size:13px;">
+        <p style="margin:0 0 4px;font-weight:600;color:#1A4D3A;">Narkadhai</p>
+        <p style="margin:0;">Connecting hearts with homes · One step at a time</p>
+      </div>
     </div>
     """
     try:
-        svc.send(to=donor_email, subject="Thank you for your donation — Narkadhai", html=html)
+        svc.send(to=donor_email, subject=f"Thank you for your donation of {formatted_amount} — Narkadhai", html=html)
+        logger.info("Thank-you email successfully sent to donor %s for %s", donor_email, formatted_amount)
         return True
     except Exception as e:
         logger.error(
@@ -109,22 +125,33 @@ def send_owner_donation_notification(
     amount: float,
     utr: str | None,
 ) -> bool:
-    """Send notification to owner/auditors. Returns True on success, False on failure (never raises)."""
+    """Send notification to support.narkadhai@gmail.com / admins."""
     svc = get_email_service()
     formatted_amount = _format_inr(amount)
-    utr_line = f"<p><strong>UTR/Txn ID:</strong> {utr}</p>" if utr else ""
+    utr_line = f"<p><strong>UTR / Txn ID:</strong> {utr}</p>" if utr else ""
+
+    # Ensure support.narkadhai@gmail.com is always notified
+    recipients = list(owner_emails) if owner_emails else []
+    primary_email = "support.narkadhai@gmail.com"
+    if primary_email not in [e.lower() for e in recipients]:
+        recipients.append(primary_email)
+
     html = f"""
-    <div style="font-family:sans-serif;max-width:600px;margin:auto;">
-      <h2 style="color:#1A4D3A;">New Donation Reported</h2>
-      <p><strong>Donor:</strong> {donor_name} ({donor_email})</p>
-      <p><strong>Amount:</strong> {formatted_amount}</p>
-      {utr_line}
-      <p><strong>Donation ID:</strong> {donation_id}</p>
-      <p>Please log in to the admin panel to verify this donation against your bank/UPI statement.</p>
+    <div style="font-family:'Segoe UI',Roboto,Helvetica,sans-serif;max-width:600px;margin:auto;padding:24px;background:#FAF7F2;border-radius:16px;border:1px solid #e7e0d6;color:#1e293b;">
+      <h2 style="color:#1A4D3A;margin-top:0;">New Donation Reported</h2>
+      <div style="background:#ffffff;padding:20px;border-radius:12px;border:1px solid #e2e8f0;margin:16px 0;">
+        <p style="margin:6px 0;"><strong>Donor Name:</strong> {donor_name}</p>
+        <p style="margin:6px 0;"><strong>Donor Email:</strong> <a href="mailto:{donor_email}">{donor_email}</a></p>
+        <p style="margin:6px 0;"><strong>Amount:</strong> <span style="color:#1A4D3A;font-weight:bold;font-size:18px;">{formatted_amount}</span></p>
+        {utr_line}
+        <p style="margin:6px 0;color:#64748b;font-size:12px;"><strong>Donation ID:</strong> {donation_id}</p>
+      </div>
+      <p style="font-size:14px;color:#475569;">Please log in to the Narkadhai admin dashboard to verify this donation.</p>
     </div>
     """
     try:
-        svc.send(to=owner_emails, subject=f"New donation reported — {formatted_amount}", html=html)
+        svc.send(to=recipients, subject=f"New donation reported: {formatted_amount} by {donor_name}", html=html)
+        logger.info("Donation notification sent to admins %s for donation %s", recipients, donation_id)
         return True
     except Exception as e:
         logger.error(
@@ -142,16 +169,24 @@ def send_contact_notification(
     message: str,
 ) -> None:
     svc = get_email_service()
+    recipients = list(owner_emails) if owner_emails else []
+    primary_email = "support.narkadhai@gmail.com"
+    if primary_email not in [e.lower() for e in recipients]:
+        recipients.append(primary_email)
+
     html = f"""
-    <div style="font-family:sans-serif;max-width:600px;margin:auto;">
-      <h2 style="color:#1A4D3A;">New Contact Message</h2>
-      <p><strong>From:</strong> {sender_name} ({sender_email})</p>
-      <p><strong>Message:</strong></p>
-      <blockquote style="border-left:3px solid #1A4D3A;padding-left:16px;color:#333;">{message}</blockquote>
+    <div style="font-family:'Segoe UI',Roboto,Helvetica,sans-serif;max-width:600px;margin:auto;padding:24px;background:#FAF7F2;border-radius:16px;border:1px solid #e7e0d6;color:#1e293b;">
+      <h2 style="color:#1A4D3A;margin-top:0;">New Contact Message</h2>
+      <div style="background:#ffffff;padding:20px;border-radius:12px;border:1px solid #e2e8f0;margin:16px 0;">
+        <p style="margin:6px 0;"><strong>From:</strong> {sender_name} (<a href="mailto:{sender_email}">{sender_email}</a>)</p>
+        <p style="margin:12px 0 4px;font-weight:600;">Message:</p>
+        <blockquote style="border-left:3px solid #1A4D3A;padding-left:14px;margin:8px 0;color:#334155;white-space:pre-wrap;">{message}</blockquote>
+      </div>
     </div>
     """
     try:
-        svc.send(to=owner_emails, subject=f"New contact message from {sender_name}", html=html)
+        svc.send(to=recipients, subject=f"New contact message from {sender_name}", html=html)
+        logger.info("Contact notification sent to admins %s from %s", recipients, sender_email)
     except Exception as e:
         logger.error("Failed to send contact notification: %s", e)
 

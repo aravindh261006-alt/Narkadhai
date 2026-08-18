@@ -221,16 +221,24 @@ async def record_screenshot_url(donation_id: str, request: Request):
 # ---------------------------------------------------------------------------
 
 @router.get("")
+@router.get("/")
 async def list_donations(
     admin: Annotated[AdminUser, Depends(require_audit_or_owner)],
 ):
     """Admin: list all donations including PII."""
-    db = get_supabase()
-    resp = db.table("donations").select("*").order("created_at", desc=True).execute()
-    return resp.data or []
+    try:
+        db = get_supabase()
+        resp = db.table("donations").select("*").order("created_at", desc=True).execute()
+        return resp.data or []
+    except Exception as e:
+        logger.error("Failed to list donations: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to fetch donations: {str(e)}")
 
 
 @router.patch("/{donation_id}/status")
+@router.patch("/{donation_id}/status/")
+@router.put("/{donation_id}/status")
+@router.put("/{donation_id}/status/")
 async def update_donation_status(
     donation_id: str,
     payload: DonationStatusUpdate,
@@ -244,30 +252,36 @@ async def update_donation_status(
     - Marking 'rejected' removes the amount from both reported_total and verified_total
       (rejected status is excluded from the get_donation_totals() Postgres function)
     """
-    db = get_supabase()
+    try:
+        db = get_supabase()
 
-    # Confirm the donation exists first
-    existing = db.table("donations").select("id, status").eq("id", donation_id).execute()
-    if not existing.data:
-        raise HTTPException(status_code=404, detail="Donation not found")
+        # Confirm the donation exists first
+        existing = db.table("donations").select("id, status").eq("id", donation_id).execute()
+        if not existing.data:
+            raise HTTPException(status_code=404, detail="Donation not found")
 
-    update_data: dict = {
-        "status": payload.status,
-        "verified_by": admin.email,
-    }
-    if payload.status == "verified":
-        update_data["verified_at"] = datetime.now(timezone.utc).isoformat()
-    elif payload.status == "rejected":
-        # Clear verified_at if re-classifying a previously verified donation
-        update_data["verified_at"] = None
+        update_data: dict = {
+            "status": payload.status,
+            "verified_by": admin.email,
+        }
+        if payload.status == "verified":
+            update_data["verified_at"] = datetime.now(timezone.utc).isoformat()
+        elif payload.status == "rejected":
+            # Clear verified_at if re-classifying a previously verified donation
+            update_data["verified_at"] = None
 
-    resp = db.table("donations").update(update_data).eq("id", donation_id).execute()
-    if not resp.data:
-        raise HTTPException(status_code=500, detail="Failed to update donation status")
+        resp = db.table("donations").update(update_data).eq("id", donation_id).execute()
+        if not resp.data:
+            raise HTTPException(status_code=500, detail="Failed to update donation status in database")
 
-    updated = resp.data[0]
-    logger.info(
-        "Donation %s status changed to '%s' by admin %s",
-        donation_id, payload.status, admin.email,
-    )
-    return updated
+        updated = resp.data[0]
+        logger.info(
+            "Donation %s status changed to '%s' by admin %s",
+            donation_id, payload.status, admin.email,
+        )
+        return updated
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error updating donation %s status: %s", donation_id, e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to update donation status: {str(e)}")
