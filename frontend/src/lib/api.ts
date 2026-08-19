@@ -135,6 +135,17 @@ export const donationsApi = {
     api.patch(`/donations/${id}/screenshot-url`, { screenshot_url }).then(r => r.data),
   sendThankYou: (id: string, data: { to_email: string; subject: string; body: string }) =>
     api.post(`/donations/${id}/send-thank-you`, data).then(r => r.data),
+  delete: (id: string) => api.delete(`/donations/${id}`),
+};
+
+export const communityMessagesApi = {
+  listApproved: () => api.get('/community-messages/approved').then(r => r.data),
+  submit: (data: { name: string; message: string; website?: string }) =>
+    api.post('/community-messages', data).then(r => r.data),
+  listAll: () => api.get('/community-messages').then(r => r.data),
+  updateStatus: (id: string, is_approved: boolean) =>
+    api.patch(`/community-messages/${id}/status`, { is_approved }).then(r => r.data),
+  delete: (id: string) => api.delete(`/community-messages/${id}`),
 };
 
 export const contactApi = {

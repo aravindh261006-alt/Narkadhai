@@ -8,7 +8,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.db import get_supabase
 from app.services import email_service as email
-from app.services.auth_service import AdminUser, require_audit_or_owner
+from app.services.auth_service import AdminUser, require_audit_or_owner, require_owner
 from app.services.rate_limit import check_rate_limit, get_client_ip
 
 logger = logging.getLogger(__name__)
@@ -340,4 +340,21 @@ async def send_custom_thank_you(
     except Exception as e:
         logger.error("Failed to send thank-you email to %s: %s", payload.to_email, e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+
+
+@router.delete("/{donation_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{donation_id}/", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_donation(
+    donation_id: str,
+    admin: Annotated[AdminUser, Depends(require_owner)],
+):
+    """Owner only: delete a donation record permanently."""
+    try:
+        db = get_supabase()
+        db.table("donations").delete().eq("id", donation_id).execute()
+        logger.info("Donation %s deleted by owner %s", donation_id, admin.email)
+    except Exception as e:
+        logger.error("Error deleting donation %s: %s", donation_id, e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to delete donation: {str(e)}")
+
 

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { CheckCircle, XCircle, Clock, Eye, ExternalLink, HeartHandshake, Send, X, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Eye, ExternalLink, HeartHandshake, Send, X, Loader2, Trash2 } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
-import { donationsApi } from '../../lib/api';
+import { donationsApi, adminApi } from '../../lib/api';
 import { formatINR, formatDate } from '../../lib/utils';
 import type { Donation } from '../../types';
 
@@ -31,12 +31,33 @@ export default function AdminDonations() {
   const [thankYouForm, setThankYouForm] = useState({ to_email: '', subject: '', body: '' });
   const [sendingEmail, setSendingEmail] = useState(false);
 
+  const [isOwner, setIsOwner] = useState(false);
+
   const load = () => donationsApi.list()
     .then(res => setDonations(Array.isArray(res) ? res : []))
     .catch(() => setDonations([]))
     .finally(() => setLoading(false));
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    adminApi.me().then(u => setIsOwner(u?.role === 'owner')).catch(() => {});
+  }, []);
+
+  const handleDeleteDonation = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this donation record? This cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await donationsApi.delete(id);
+      toast.success('Donation record deleted');
+      await load();
+      if (selected?.id === id) setSelected(null);
+    } catch (err: any) {
+      console.error('Failed to delete donation:', err);
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to delete donation');
+    }
+  };
 
   const updateStatus = async (id: string, status: 'verified' | 'rejected') => {
     // Optimistic UI update
@@ -266,6 +287,16 @@ support.narkadhai@gmail.com`;
                               <XCircle className="w-4 h-4" />
                             </button>
                           )}
+
+                          {isOwner && (
+                            <button
+                              onClick={() => handleDeleteDonation(d.id)}
+                              className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-all"
+                              title="Delete donation record"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -323,6 +354,15 @@ support.narkadhai@gmail.com`;
                 <button onClick={() => { updateStatus(selected.id, 'rejected'); setSelected(null); }}
                   className="flex-1 bg-red-600 text-white py-2.5 px-4 rounded-xl text-sm font-medium hover:bg-red-700 transition-colors">
                   Mark Rejected
+                </button>
+              )}
+              {isOwner && (
+                <button
+                  onClick={() => { const id = selected.id; handleDeleteDonation(id); }}
+                  className="p-2.5 text-red-600 hover:bg-red-50 rounded-xl border border-red-200 text-sm transition-all"
+                  title="Delete donation"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               )}
               <button onClick={() => setSelected(null)}

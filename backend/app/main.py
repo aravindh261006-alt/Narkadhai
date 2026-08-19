@@ -16,6 +16,7 @@ from app.routers import (
     members,
     settings_router,
     admin,
+    community_messages,
 )
 
 logging.basicConfig(
@@ -93,6 +94,7 @@ def create_app() -> FastAPI:
     # Mount routers
     app.include_router(donations.router, prefix="/api/donations", tags=["donations"])
     app.include_router(contact.router, prefix="/api/contact", tags=["contact"])
+    app.include_router(community_messages.router, prefix="/api/community-messages", tags=["community-messages"])
     app.include_router(members.router, prefix="/api/members", tags=["members"])
     app.include_router(albums.router, prefix="/api/albums", tags=["albums"])
     app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])

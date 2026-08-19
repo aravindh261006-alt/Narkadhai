@@ -350,6 +350,63 @@ class TestAdminEndpoints(unittest.TestCase):
         self.assertEqual(admin.role, "owner")
         self.assertTrue(admin.is_owner)
 
+    @patch("app.routers.donations.get_supabase", return_value=mock_supabase)
+    def test_delete_donation_as_owner(self, mock_get_db):
+        """Test deleting a donation record as owner."""
+        app.dependency_overrides[require_owner] = mock_owner_admin
+        mock_supabase.table().delete().eq().execute.return_value.data = []
+
+        resp = client.delete("/api/donations/d1")
+        self.assertEqual(resp.status_code, 204)
+
+    @patch("app.routers.community_messages.get_supabase", return_value=mock_supabase)
+    def test_community_messages_flow(self, mock_get_db):
+        """Test submitting community message, public approved list, admin list, approval, and delete."""
+        # 1. Public submission
+        mock_supabase.table().insert().execute.return_value.data = [
+            {"id": "cm1", "name": "Priya", "message": "Keep up the wonderful work!", "is_approved": False}
+        ]
+        resp_sub = client.post(
+            "/api/community-messages",
+            json={"name": "Priya", "message": "Keep up the wonderful work!"},
+        )
+        self.assertEqual(resp_sub.status_code, 201)
+        self.assertEqual(resp_sub.json()["ok"], True)
+
+        # 2. Public approved list
+        mock_supabase.table().select().eq().order().execute.return_value.data = [
+            {"id": "cm1", "name": "Priya", "message": "Keep up the wonderful work!", "is_approved": True}
+        ]
+        resp_app = client.get("/api/community-messages/approved")
+        self.assertEqual(resp_app.status_code, 200)
+        self.assertEqual(len(resp_app.json()), 1)
+
+        # 3. Admin list all
+        app.dependency_overrides[require_audit_or_owner] = mock_owner_admin
+        mock_supabase.table().select().order().execute.return_value.data = [
+            {"id": "cm1", "name": "Priya", "message": "Keep up the wonderful work!", "is_approved": False}
+        ]
+        resp_all = client.get("/api/community-messages")
+        self.assertEqual(resp_all.status_code, 200)
+        self.assertEqual(len(resp_all.json()), 1)
+
+        # 4. Admin update approval status
+        mock_supabase.table().update().eq().execute.return_value.data = [
+            {"id": "cm1", "name": "Priya", "message": "Keep up the wonderful work!", "is_approved": True}
+        ]
+        resp_patch = client.patch(
+            "/api/community-messages/cm1/status",
+            json={"is_approved": True},
+        )
+        self.assertEqual(resp_patch.status_code, 200)
+        self.assertEqual(resp_patch.json()["is_approved"], True)
+
+        # 5. Admin delete
+        mock_supabase.table().delete().eq().execute.return_value.data = []
+        resp_del = client.delete("/api/community-messages/cm1")
+        self.assertEqual(resp_del.status_code, 204)
+
 
 if __name__ == "__main__":
     unittest.main()
+

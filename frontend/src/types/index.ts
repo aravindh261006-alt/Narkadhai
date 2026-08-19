@@ -87,3 +87,12 @@ export interface AdminUser {
   name: string;
   role: 'owner' | 'audit';
 }
+
+export interface CommunityMessage {
+  id: string;
+  name: string;
+  message: string;
+  is_approved: boolean;
+  created_at: string;
+}
+

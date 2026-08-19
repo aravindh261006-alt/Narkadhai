@@ -357,3 +357,34 @@ create policy "Authenticated read donation screenshots"
   on storage.objects for select
   to authenticated
   using (bucket_id = 'donation-screenshots');
+
+-- ============================================================
+-- COMMUNITY MESSAGES / TESTIMONIALS
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.community_messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  message TEXT NOT NULL,
+  is_approved BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.community_messages 
+  ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can submit community message" ON public.community_messages;
+CREATE POLICY "Anyone can submit community message" 
+  ON public.community_messages 
+  FOR INSERT TO public WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public read approved messages" ON public.community_messages;
+CREATE POLICY "Public read approved messages" 
+  ON public.community_messages 
+  FOR SELECT USING (is_approved = true);
+
+DROP POLICY IF EXISTS "Authenticated manage community messages" ON public.community_messages;
+CREATE POLICY "Authenticated manage community messages" 
+  ON public.community_messages 
+  FOR ALL TO authenticated USING (true);
+

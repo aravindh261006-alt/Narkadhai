@@ -5,6 +5,8 @@ from app.routers import (
     members,
     settings_router,
     admin,
+    community_messages,
 )
 
-__all__ = ["albums", "contact", "donations", "members", "settings_router", "admin"]
+__all__ = ["albums", "contact", "donations", "members", "settings_router", "admin", "community_messages"]
+
