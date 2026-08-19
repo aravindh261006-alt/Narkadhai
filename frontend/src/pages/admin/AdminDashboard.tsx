@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { IndianRupee, TrendingUp, Mail, CheckCircle } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
-import { adminApi } from '../../lib/api';
+import { adminApi, donationsApi, contactApi, settingsApi } from '../../lib/api';
 import { formatINR, formatDate } from '../../lib/utils';
 
 export default function AdminDashboard() {
@@ -10,7 +10,57 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    adminApi.dashboard().then(setData).catch(() => {}).finally(() => setLoading(false));
+    const loadStats = async () => {
+      try {
+        const dashData = await adminApi.dashboard();
+        // If dashboard returned valid data, use it
+        if (dashData && dashData.totals && (dashData.recent_donations?.length > 0 || dashData.totals.reported_total > 0 || dashData.recent_messages?.length > 0)) {
+          setData(dashData);
+          setLoading(false);
+          return;
+        }
+
+        // Fallback: directly compute from endpoints if needed
+        const [donations, messages, settings, me] = await Promise.allSettled([
+          donationsApi.list(),
+          contactApi.list(),
+          settingsApi.get(),
+          adminApi.me(),
+        ]);
+
+        const allDonations = donations.status === 'fulfilled' && Array.isArray(donations.value) ? donations.value : [];
+        const allMessages = messages.status === 'fulfilled' && Array.isArray(messages.value) ? messages.value : [];
+        const allSettings = settings.status === 'fulfilled' ? settings.value : {};
+        const adminUser = me.status === 'fulfilled' ? me.value : dashData?.admin || { email: '', name: 'Admin', role: 'owner' };
+
+        const reported_total = allDonations.filter(d => d.status !== 'rejected').reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+        const verified_total = allDonations.filter(d => d.status === 'verified').reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+        const reported_count = allDonations.filter(d => d.status !== 'rejected').length;
+        const verified_count = allDonations.filter(d => d.status === 'verified').length;
+        const target = Number(allSettings?.donation_target_amount) || 0;
+        const unread_messages = allMessages.filter(m => !m.is_read).length;
+
+        setData({
+          totals: {
+            reported_total,
+            verified_total,
+            reported_count,
+            verified_count,
+            target,
+          },
+          recent_donations: allDonations.slice(0, 5),
+          recent_messages: allMessages.slice(0, 5),
+          unread_messages,
+          admin: adminUser,
+        });
+      } catch (err) {
+        console.error('Error loading dashboard:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadStats();
   }, []);
 
   const totals = data?.totals || {};
@@ -75,15 +125,15 @@ export default function AdminDashboard() {
                 <div className="space-y-3">
                   {(!data?.recent_donations || !Array.isArray(data.recent_donations) || data.recent_donations.length === 0) ? (
                     <p className="text-gray-400 text-sm text-center py-4">No donations yet</p>
-                  ) : (Array.isArray(data.recent_donations) ? data.recent_donations : []).map((d: any) => (
-                    <div key={d.id} className="flex items-center justify-between">
+                  ) : (Array.isArray(data.recent_donations) ? data.recent_donations : []).slice(0, 5).map((d: any) => (
+                    <div key={d.id} className="flex items-center justify-between p-2 rounded-xl hover:bg-gray-50 transition-colors">
                       <div>
                         <p className="text-sm font-medium text-gray-800">{d.donor_name}</p>
                         <p className="text-xs text-gray-400">{formatDate(d.created_at)}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-sm text-gray-800">{formatINR(d.amount)}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        <span className={`text-xs px-2 py-0.5 rounded-full capitalize font-medium ${
                           d.status === 'verified' ? 'bg-green-100 text-green-700' :
                           d.status === 'rejected' ? 'bg-red-100 text-red-700' :
                           'bg-amber-100 text-amber-700'
@@ -105,12 +155,20 @@ export default function AdminDashboard() {
                 <div className="space-y-3">
                   {(!data?.recent_messages || !Array.isArray(data.recent_messages) || data.recent_messages.length === 0) ? (
                     <p className="text-gray-400 text-sm text-center py-4">No messages yet</p>
-                  ) : (Array.isArray(data.recent_messages) ? data.recent_messages : []).map((m: any) => (
-                    <div key={m.id} className={`flex items-start gap-2 ${!m.is_read ? 'opacity-100' : 'opacity-60'}`}>
-                      <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${!m.is_read ? 'bg-primary-500' : 'bg-gray-300'}`} />
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">{m.name}</p>
-                        <p className="text-xs text-gray-400">{m.email} · {formatDate(m.created_at)}</p>
+                  ) : (Array.isArray(data.recent_messages) ? data.recent_messages : []).slice(0, 5).map((m: any) => (
+                    <div key={m.id} className={`flex items-start gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors ${!m.is_read ? 'bg-primary-50/30' : 'opacity-75'}`}>
+                      <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${!m.is_read ? 'bg-primary-600' : 'bg-gray-300'}`} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className={`text-sm ${!m.is_read ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>{m.name}</p>
+                          <span className="text-xs text-gray-400 flex-shrink-0">{formatDate(m.created_at)}</span>
+                        </div>
+                        <p className="text-xs text-primary-700 truncate">{m.email}</p>
+                        {m.message && (
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                            {m.message}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}

@@ -133,6 +133,8 @@ export const donationsApi = {
     api.patch(`/donations/${id}/status`, { status }).then(r => r.data),
   recordScreenshot: (id: string, screenshot_url: string) =>
     api.patch(`/donations/${id}/screenshot-url`, { screenshot_url }).then(r => r.data),
+  sendThankYou: (id: string, data: { to_email: string; subject: string; body: string }) =>
+    api.post(`/donations/${id}/send-thank-you`, data).then(r => r.data),
 };
 
 export const contactApi = {

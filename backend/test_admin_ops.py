@@ -219,18 +219,62 @@ class TestAdminEndpoints(unittest.TestCase):
 
     @patch("app.routers.admin.get_supabase", return_value=mock_supabase)
     def test_get_dashboard(self, mock_get_db):
-        """Test fetching dashboard summary stats."""
+        """Test fetching dashboard summary stats accurately."""
         app.dependency_overrides[require_audit_or_owner] = mock_owner_admin
-        mock_supabase.rpc().execute.return_value.data = [{"reported_total": 5000, "verified_total": 3000, "reported_count": 5, "verified_count": 3}]
-        mock_supabase.table().select().order().limit().execute.return_value.data = []
-        mock_supabase.table().select().eq().execute.return_value.count = 2
-        mock_supabase.table().select().eq().execute.return_value.data = [{"value": "100000"}]
+
+        # Mock table calls for donations and contact_messages
+        mock_donations = [
+            {"id": "d1", "donor_name": "Ravi", "donor_email": "ravi@example.com", "amount": 2000, "status": "verified", "created_at": "2026-08-19T00:00:00Z"},
+            {"id": "d2", "donor_name": "Anita", "donor_email": "anita@example.com", "amount": 3000, "status": "pending", "created_at": "2026-08-19T01:00:00Z"},
+            {"id": "d3", "donor_name": "Spam", "donor_email": "spam@example.com", "amount": 1000, "status": "rejected", "created_at": "2026-08-19T02:00:00Z"},
+        ]
+        mock_messages = [
+            {"id": "m1", "name": "Alice", "email": "alice@example.com", "message": "Hi", "created_at": "2026-08-19T00:00:00Z", "is_read": False},
+            {"id": "m2", "name": "Bob", "email": "bob@example.com", "message": "Thanks", "created_at": "2026-08-19T01:00:00Z", "is_read": True},
+        ]
+
+        def mock_table_select(table_name):
+            mock_tbl = MagicMock()
+            if table_name == "donations":
+                mock_tbl.select.return_value.order.return_value.execute.return_value.data = mock_donations
+            elif table_name == "contact_messages":
+                mock_tbl.select.return_value.order.return_value.execute.return_value.data = mock_messages
+            elif table_name == "settings":
+                mock_tbl.select.return_value.eq.return_value.execute.return_value.data = [{"value": "500000"}]
+            return mock_tbl
+
+        mock_supabase.table.side_effect = mock_table_select
 
         resp = client.get("/api/admin/dashboard")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertIn("totals", data)
+        # Reported total excludes rejected = 2000 + 3000 = 5000
         self.assertEqual(data["totals"]["reported_total"], 5000)
+        # Verified total = 2000
+        self.assertEqual(data["totals"]["verified_total"], 2000)
+        self.assertEqual(data["totals"]["reported_count"], 2)
+        self.assertEqual(data["totals"]["verified_count"], 1)
+        self.assertEqual(data["unread_messages"], 1)
+        self.assertEqual(len(data["recent_donations"]), 3)
+        self.assertEqual(len(data["recent_messages"]), 2)
+
+        # Reset side effect
+        mock_supabase.table.side_effect = None
+
+    def test_send_custom_thank_you(self):
+        """Test admin sending custom thank you email to donor."""
+        app.dependency_overrides[require_audit_or_owner] = mock_owner_admin
+        resp = client.post(
+            "/api/donations/d1/send-thank-you",
+            json={
+                "to_email": "donor@example.com",
+                "subject": "Thank You for Your Generous Heart - Narkadhai 🙏",
+                "body": "Dear Donor,\n\nThank you so much for your support!",
+            },
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["ok"], True)
 
     def test_get_me(self):
         """Test getting current admin profile."""

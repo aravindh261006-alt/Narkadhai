@@ -16,57 +16,85 @@ router = APIRouter()
 
 
 @router.get("/dashboard")
+@router.get("/dashboard/")
 async def get_dashboard(
     admin: Annotated[AdminUser, Depends(require_audit_or_owner)],
 ):
     """Admin: summary stats for the dashboard."""
-    db = get_supabase()
+    try:
+        db = get_supabase()
 
-    totals_resp = db.rpc("get_donation_totals", {}).execute()
-    totals = totals_resp.data[0] if totals_resp.data else {}
+        # 1. Fetch donations and calculate totals accurately
+        donations_resp = (
+            db.table("donations")
+            .select("id, donor_name, donor_email, amount, status, created_at")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        all_donations = donations_resp.data or []
 
-    recent_donations = (
-        db.table("donations")
-        .select("id, donor_name, amount, status, created_at")
-        .order("created_at", desc=True)
-        .limit(10)
-        .execute()
-        .data or []
-    )
+        reported_total = sum(float(d.get("amount") or 0) for d in all_donations if d.get("status") != "rejected")
+        verified_total = sum(float(d.get("amount") or 0) for d in all_donations if d.get("status") == "verified")
+        reported_count = sum(1 for d in all_donations if d.get("status") != "rejected")
+        verified_count = sum(1 for d in all_donations if d.get("status") == "verified")
 
-    recent_messages = (
-        db.table("contact_messages")
-        .select("id, name, email, created_at, is_read")
-        .order("created_at", desc=True)
-        .limit(10)
-        .execute()
-        .data or []
-    )
+        recent_donations = all_donations[:5]
 
-    unread_count = (
-        db.table("contact_messages")
-        .select("id", count="exact")
-        .eq("is_read", False)
-        .execute()
-        .count or 0
-    )
+        # 2. Fetch contact messages and unread count
+        messages_resp = (
+            db.table("contact_messages")
+            .select("id, name, email, message, created_at, is_read")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        all_messages = messages_resp.data or []
+        recent_messages = all_messages[:5]
+        unread_count = sum(1 for m in all_messages if not m.get("is_read"))
 
-    target_resp = db.table("settings").select("value").eq("key", "donation_target_amount").execute()
-    target = float((target_resp.data or [{}])[0].get("value", 0) or 0)
+        # 3. Fetch donation target
+        target = 0.0
+        try:
+            target_resp = db.table("settings").select("value").eq("key", "donation_target_amount").execute()
+            if target_resp.data and len(target_resp.data) > 0:
+                val = target_resp.data[0].get("value")
+                if val is not None:
+                    target = float(val)
+        except Exception as e:
+            logger.warning("Could not parse donation_target_amount: %s", e)
 
-    return {
-        "totals": {
-            "reported_total": float(totals.get("reported_total", 0) or 0),
-            "verified_total": float(totals.get("verified_total", 0) or 0),
-            "reported_count": int(totals.get("reported_count", 0) or 0),
-            "verified_count": int(totals.get("verified_count", 0) or 0),
-            "target": target,
-        },
-        "recent_donations": recent_donations,
-        "recent_messages": recent_messages,
-        "unread_messages": unread_count,
-        "admin": {"email": admin.email, "name": admin.name, "role": admin.role},
-    }
+        logger.info(
+            "Dashboard stats loaded: reported=%s verified=%s unread=%s donations_count=%s",
+            reported_total, verified_total, unread_count, len(all_donations),
+        )
+
+        return {
+            "totals": {
+                "reported_total": reported_total,
+                "verified_total": verified_total,
+                "reported_count": reported_count,
+                "verified_count": verified_count,
+                "target": target,
+            },
+            "recent_donations": recent_donations,
+            "recent_messages": recent_messages,
+            "unread_messages": unread_count,
+            "admin": {"email": admin.email, "name": admin.name, "role": admin.role},
+        }
+    except Exception as e:
+        logger.error("Error generating dashboard stats: %s", e, exc_info=True)
+        return {
+            "totals": {
+                "reported_total": 0.0,
+                "verified_total": 0.0,
+                "reported_count": 0,
+                "verified_count": 0,
+                "target": 0.0,
+            },
+            "recent_donations": [],
+            "recent_messages": [],
+            "unread_messages": 0,
+            "admin": {"email": admin.email, "name": admin.name, "role": admin.role},
+        }
 
 
 @router.get("/me")

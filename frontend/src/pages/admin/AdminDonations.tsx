@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { CheckCircle, XCircle, Clock, Eye, ExternalLink } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Eye, ExternalLink, HeartHandshake, Send, X, Loader2 } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { donationsApi } from '../../lib/api';
 import { formatINR, formatDate } from '../../lib/utils';
@@ -12,6 +12,11 @@ const STATUS_CONFIG = {
   rejected: { label: 'Rejected', color: 'bg-red-100 text-red-700',      Icon: XCircle },
 };
 
+const hasValidEmail = (email?: string) => {
+  if (!email) return false;
+  return email.trim().length > 3 && email.includes('@');
+};
+
 export default function AdminDonations() {
   const [donations, setDonations] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,6 +25,11 @@ export default function AdminDonations() {
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // Thank You Email Modal State
+  const [thankYouDonation, setThankYouDonation] = useState<Donation | null>(null);
+  const [thankYouForm, setThankYouForm] = useState({ to_email: '', subject: '', body: '' });
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const load = () => donationsApi.list()
     .then(res => setDonations(Array.isArray(res) ? res : []))
@@ -41,6 +51,51 @@ export default function AdminDonations() {
       console.error('Failed to update donation status:', err);
       toast.error(err?.response?.data?.detail || err?.message || 'Failed to update status');
       await load();
+    }
+  };
+
+  const openThankYouModal = (d: Donation) => {
+    const formattedAmount = formatINR(d.amount);
+    const defaultSubject = "Thank You for Your Generous Heart - Narkadhai 🙏";
+    const defaultBody = `Dear ${d.donor_name},
+
+We wanted to take a moment to reach out and express our deepest gratitude for your incredibly generous contribution of ${formattedAmount} to Narkadhai.
+
+Your kindness is not just a donation — it is a ray of hope for the children and elders we visit. Because of people like you, we are able to show up, bring smiles, and make a real difference in the lives of those who need it most.
+
+Every single rupee you have given will be used with full care, love, and transparency. We personally ensure that your contribution reaches the right hands and the right hearts.
+
+From the bottom of our hearts — thank you for believing in what we do. You are now a part of the Narkadhai family, and we are truly grateful to have your support.
+
+With love and gratitude,
+Team Narkadhai 🙏
+support.narkadhai@gmail.com`;
+
+    setThankYouDonation(d);
+    setThankYouForm({
+      to_email: d.donor_email || '',
+      subject: defaultSubject,
+      body: defaultBody,
+    });
+  };
+
+  const handleSendThankYou = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!thankYouDonation) return;
+    if (!thankYouForm.to_email || !thankYouForm.body.trim()) {
+      return toast.error('Recipient email and message body are required');
+    }
+
+    setSendingEmail(true);
+    try {
+      await donationsApi.sendThankYou(thankYouDonation.id, thankYouForm);
+      toast.success(`Thank you email sent to ${thankYouForm.to_email}!`);
+      setThankYouDonation(null);
+    } catch (err: any) {
+      console.error('Failed to send thank you email:', err);
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to send thank you email');
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -146,11 +201,12 @@ export default function AdminDonations() {
                   <tr><td colSpan={7} className="px-4 py-12 text-center text-gray-400">No donations found</td></tr>
                 ) : (Array.isArray(filtered) ? filtered : []).map(d => {
                   const cfg = STATUS_CONFIG[d.status];
+                  const canSendEmail = hasValidEmail(d.donor_email);
                   return (
                     <tr key={d.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
                         <p className="font-medium text-gray-800">{d.donor_name}</p>
-                        <p className="text-xs text-gray-400">{d.donor_email}</p>
+                        <p className="text-xs text-gray-400">{d.donor_email || '—'}</p>
                       </td>
                       <td className="px-4 py-3 font-semibold text-gray-800">{formatINR(d.amount)}</td>
                       <td className="px-4 py-3 text-gray-600 text-xs font-mono">{d.utr_or_txn_id || '—'}</td>
@@ -173,7 +229,7 @@ export default function AdminDonations() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => setSelected(d)}
                             className="p-1.5 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-primary-50 transition-all"
@@ -181,6 +237,17 @@ export default function AdminDonations() {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
+
+                          {canSendEmail && (
+                            <button
+                              onClick={() => openThankYouModal(d)}
+                              className="p-1.5 text-gray-400 hover:text-amber-600 rounded-lg hover:bg-amber-50 transition-all"
+                              title="Send Thank You Email"
+                            >
+                              <HeartHandshake className="w-4 h-4 text-amber-600" />
+                            </button>
+                          )}
+
                           {d.status !== 'verified' && (
                             <button
                               onClick={() => updateStatus(d.id, 'verified')}
@@ -213,12 +280,12 @@ export default function AdminDonations() {
       {/* Detail modal */}
       {selected && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl animate-[slide-up_0.2s_ease-out]" onClick={e => e.stopPropagation()}>
             <h3 className="font-display text-xl font-bold text-gray-800 mb-4">Donation Details</h3>
             <dl className="space-y-3 text-sm">
               {[
                 ['Donor Name', selected.donor_name],
-                ['Email', selected.donor_email],
+                ['Email', selected.donor_email || '—'],
                 ['Amount', formatINR(selected.amount)],
                 ['UTR / Txn ID', selected.utr_or_txn_id || '—'],
                 ['Status', selected.status],
@@ -237,16 +304,24 @@ export default function AdminDonations() {
                 <ExternalLink className="w-4 h-4" /> View screenshot
               </a>
             )}
-            <div className="flex gap-3 mt-6">
+            <div className="flex flex-wrap gap-2 mt-6">
+              {hasValidEmail(selected.donor_email) && (
+                <button
+                  onClick={() => { const d = selected; setSelected(null); openThankYouModal(d); }}
+                  className="flex-1 bg-amber-500 hover:bg-amber-600 text-primary-950 font-semibold py-2.5 px-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <HeartHandshake className="w-4 h-4" /> Send Thank You
+                </button>
+              )}
               {selected.status !== 'verified' && (
                 <button onClick={() => { updateStatus(selected.id, 'verified'); setSelected(null); }}
-                  className="flex-1 bg-green-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-green-700 transition-colors">
+                  className="flex-1 bg-green-600 text-white py-2.5 px-4 rounded-xl text-sm font-medium hover:bg-green-700 transition-colors">
                   Mark Verified
                 </button>
               )}
               {selected.status !== 'rejected' && (
                 <button onClick={() => { updateStatus(selected.id, 'rejected'); setSelected(null); }}
-                  className="flex-1 bg-red-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-red-700 transition-colors">
+                  className="flex-1 bg-red-600 text-white py-2.5 px-4 rounded-xl text-sm font-medium hover:bg-red-700 transition-colors">
                   Mark Rejected
                 </button>
               )}
@@ -255,6 +330,107 @@ export default function AdminDonations() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Thank You Email Modal */}
+      {thankYouDonation && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => !sendingEmail && setThankYouDonation(null)}
+        >
+          <div
+            className="bg-white rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl relative animate-[slide-up_0.2s_ease-out] border border-primary-100 max-h-[90vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4 pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+                  <HeartHandshake className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-display text-xl font-bold text-gray-800">Send Thank You Email</h3>
+                  <p className="text-xs text-gray-500">Personalized appreciation to {thankYouDonation.donor_name} ({formatINR(thankYouDonation.amount)})</p>
+                </div>
+              </div>
+              <button
+                onClick={() => !sendingEmail && setThankYouDonation(null)}
+                className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                disabled={sendingEmail}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendThankYou} className="flex-1 overflow-y-auto pt-4 space-y-4 pr-1">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                  Recipient Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={thankYouForm.to_email}
+                  onChange={e => setThankYouForm({ ...thankYouForm, to_email: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-medium text-gray-800 bg-gray-50/50"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                  Email Subject
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={thankYouForm.subject}
+                  onChange={e => setThankYouForm({ ...thankYouForm, subject: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-medium text-gray-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                  Email Message Body (Editable)
+                </label>
+                <textarea
+                  rows={12}
+                  required
+                  value={thankYouForm.body}
+                  onChange={e => setThankYouForm({ ...thankYouForm, body: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm leading-relaxed text-gray-700 font-sans"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setThankYouDonation(null)}
+                  disabled={sendingEmail}
+                  className="px-5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={sendingEmail}
+                  className="inline-flex items-center gap-2 bg-primary-700 hover:bg-primary-800 disabled:opacity-50 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-all shadow-md"
+                >
+                  {sendingEmail ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      Send Thank You Email
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

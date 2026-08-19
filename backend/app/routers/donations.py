@@ -285,3 +285,59 @@ async def update_donation_status(
     except Exception as e:
         logger.error("Error updating donation %s status: %s", donation_id, e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to update donation status: {str(e)}")
+
+
+class SendCustomThankYouRequest(BaseModel):
+    to_email: EmailStr
+    subject: str = Field(default="Thank You for Your Generous Heart - Narkadhai 🙏", min_length=1, max_length=300)
+    body: str = Field(..., min_length=5, max_length=10000)
+
+
+@router.post("/{donation_id}/send-thank-you")
+@router.post("/{donation_id}/send-thank-you/")
+@router.post("/send-thank-you")
+async def send_custom_thank_you(
+    payload: SendCustomThankYouRequest,
+    admin: Annotated[AdminUser, Depends(require_audit_or_owner)],
+    donation_id: str | None = None,
+):
+    """Admin: manually send a warm, customized thank-you email to a donor."""
+    svc = email.get_email_service()
+
+    # Escape HTML special chars and convert line breaks
+    safe_body = (
+        payload.body
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\n", "<br>")
+    )
+
+    html = f"""
+    <div style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:600px;margin:auto;padding:32px;background:#FAF7F2;border-radius:16px;border:1px solid #e7e0d6;color:#1e293b;line-height:1.6;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="color:#1A4D3A;margin:0;font-size:24px;">Narkadhai</h1>
+        <p style="color:#854d0e;font-size:14px;margin:4px 0 0;font-weight:600;">Connecting Hearts with Homes</p>
+      </div>
+
+      <div style="background:#ffffff;padding:28px;border-radius:14px;border:1px solid #e2e8f0;font-size:15px;color:#334155;">
+        {safe_body}
+      </div>
+
+      <div style="margin-top:24px;text-align:center;color:#64748b;font-size:12px;">
+        <p style="margin:0;">Narkadhai Community Initiative · <a href="mailto:support.narkadhai@gmail.com" style="color:#1A4D3A;text-decoration:none;">support.narkadhai@gmail.com</a></p>
+      </div>
+    </div>
+    """
+
+    try:
+        svc.send(to=str(payload.to_email), subject=payload.subject, html=html)
+        logger.info(
+            "Admin %s sent custom thank-you email to %s (donation_id=%s)",
+            admin.email, payload.to_email, donation_id,
+        )
+        return {"ok": True, "message": f"Thank you email successfully sent to {payload.to_email}"}
+    except Exception as e:
+        logger.error("Failed to send thank-you email to %s: %s", payload.to_email, e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+
