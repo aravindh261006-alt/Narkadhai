@@ -207,7 +207,7 @@ export default function HomePage() {
                       required
                       value={formName}
                       onChange={e => setFormName(e.target.value)}
-                      placeholder="e.g. Priya or Ananya R."
+                      placeholder="Your name"
                       className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm backdrop-blur-sm transition-all"
                     />
                   </div>
