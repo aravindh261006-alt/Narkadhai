@@ -406,7 +406,73 @@ class TestAdminEndpoints(unittest.TestCase):
         resp_del = client.delete("/api/community-messages/cm1")
         self.assertEqual(resp_del.status_code, 204)
 
+    @patch("resend.Emails.send")
+    def test_resend_email_service_success(self, mock_resend_send):
+        """Test successful email send via Resend."""
+        from app.services.email_service import ResendEmailService
+        from app.config import settings
+
+        mock_resend_send.return_value = {"id": "resend_123"}
+        with patch.object(settings, "RESEND_API_KEY", "re_test_key"), \
+             patch.object(settings, "EMAIL_FROM", "Narkadhai <onboarding@resend.dev>"):
+            svc = ResendEmailService()
+            svc.send(to="donor@example.com", subject="Thank you", html="<p>Thanks!</p>")
+            mock_resend_send.assert_called_once()
+            call_params = mock_resend_send.call_args[0][0]
+            self.assertEqual(call_params["to"], ["donor@example.com"])
+            self.assertEqual(call_params["from_"], "Narkadhai <onboarding@resend.dev>")
+
+    @patch("resend.Emails.send")
+    def test_resend_email_service_fallback_on_unverified_domain(self, mock_resend_send):
+        """Test that unverified custom domain automatically falls back to onboarding@resend.dev."""
+        from app.services.email_service import ResendEmailService
+        from app.config import settings
+
+        # First call fails (domain unverified error), second call (fallback) succeeds
+        mock_resend_send.side_effect = [
+            Exception("The domain customdomain.org is not verified"),
+            {"id": "resend_fallback_456"}
+        ]
+        with patch.object(settings, "RESEND_API_KEY", "re_test_key"), \
+             patch.object(settings, "EMAIL_FROM", "Narkadhai <noreply@customdomain.org>"):
+            svc = ResendEmailService()
+            svc.send(to="donor@example.com", subject="Thank you", html="<p>Thanks!</p>")
+            self.assertEqual(mock_resend_send.call_count, 2)
+            # Second call must use fallback sender
+            fallback_params = mock_resend_send.call_args_list[1][0][0]
+            self.assertEqual(fallback_params["from_"], "Narkadhai <onboarding@resend.dev>")
+
+    @patch("resend.Emails.send")
+    def test_resend_email_service_both_fail_raises_runtime_error(self, mock_resend_send):
+        """Test that if both primary and fallback fail, a descriptive RuntimeError is raised."""
+        from app.services.email_service import ResendEmailService
+        from app.config import settings
+
+        mock_resend_send.side_effect = [
+            Exception("Domain unverified"),
+            Exception("Recipient not allowed on free tier")
+        ]
+        with patch.object(settings, "RESEND_API_KEY", "re_test_key"), \
+             patch.object(settings, "EMAIL_FROM", "Narkadhai <noreply@customdomain.org>"):
+            svc = ResendEmailService()
+            with self.assertRaises(RuntimeError) as ctx:
+                svc.send(to="donor@example.com", subject="Thank you", html="<p>Thanks!</p>")
+            self.assertIn("Failed to send email via Resend", str(ctx.exception))
+            self.assertIn("Recipient not allowed on free tier", str(ctx.exception))
+
+    def test_resend_email_service_missing_api_key(self):
+        """Test error when RESEND_API_KEY is missing."""
+        from app.services.email_service import ResendEmailService
+        from app.config import settings
+
+        with patch.object(settings, "RESEND_API_KEY", ""):
+            svc = ResendEmailService()
+            with self.assertRaises(RuntimeError) as ctx:
+                svc.send(to="donor@example.com", subject="Thank you", html="<p>Thanks!</p>")
+            self.assertIn("RESEND_API_KEY is not configured", str(ctx.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

@@ -12,7 +12,7 @@ class Settings(BaseSettings):
 
     # Resend (email)
     RESEND_API_KEY: str = ""
-    EMAIL_FROM: str = "Narkadhai <noreply@narkadhai.org>"
+    EMAIL_FROM: str = "Narkadhai <onboarding@resend.dev>"
     OWNER_EMAIL: str = ""         # notification recipient
 
     # CORS

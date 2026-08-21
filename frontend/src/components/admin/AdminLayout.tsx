@@ -21,22 +21,47 @@ const navItems = [
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [role, setRole] = useState<'owner' | 'audit' | null>(null);
+  const [role, setRole] = useState<'owner' | 'audit' | null>(() => {
+    try {
+      return (localStorage.getItem('narkadhai_admin_role') as 'owner' | 'audit') || null;
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
+    let mounted = true;
     adminApi.me()
-      .then(user => setRole(user.role))
+      .then(user => {
+        if (mounted && user?.role) {
+          setRole(user.role);
+          try {
+            localStorage.setItem('narkadhai_admin_role', user.role);
+          } catch {}
+        }
+      })
       .catch(() => {});
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleLogout = async () => {
+    try {
+      localStorage.removeItem('narkadhai_admin_role');
+    } catch {}
     await supabase.auth.signOut();
     toast.success('Logged out');
     navigate('/login');
   };
 
   const filteredNavItems = navItems.filter(item => {
-    if (item.to === '/admin/admins' && role !== 'owner') return false;
+    // If navigating directly to or staying on /admin/admins, keep it stable
+    if (item.to === '/admin/admins') {
+      if (location.pathname === '/admin/admins') return true;
+      if (role && role !== 'owner') return false;
+      return true;
+    }
     return true;
   });
 

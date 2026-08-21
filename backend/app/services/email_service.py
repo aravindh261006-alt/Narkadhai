@@ -31,23 +31,94 @@ class EmailService(ABC):
 # ---------------------------------------------------------------------------
 
 class ResendEmailService(EmailService):
+    FALLBACK_FROM = "Narkadhai <onboarding@resend.dev>"
+
     def send(self, *, to: str | list[str], subject: str, html: str) -> None:
         import resend
-        resend.api_key = cfg.RESEND_API_KEY
+
+        api_key = (cfg.RESEND_API_KEY or "").strip()
+        if not api_key:
+            logger.error("RESEND_API_KEY is not configured or is empty. Cannot send email.")
+            raise RuntimeError("RESEND_API_KEY is not configured on the server.")
+
+        resend.api_key = api_key
         recipients = to if isinstance(to, list) else [to]
-        # Clean email recipients
         clean_recipients = [r.strip() for r in recipients if r and r.strip()]
         if not clean_recipients:
             logger.warning("No valid email recipients provided")
             return
 
-        params = resend.Emails.SendParams(
-            from_=cfg.EMAIL_FROM or "Narkadhai <noreply@narkadhai.org>",
-            to=clean_recipients,
-            subject=subject,
-            html=html,
+        from_addr = (cfg.EMAIL_FROM or "").strip() or self.FALLBACK_FROM
+
+        logger.info(
+            "Attempting to send email via Resend | From: '%s' | To: %s | Subject: %s",
+            from_addr, clean_recipients, subject,
         )
-        resend.Emails.send(params)
+
+        try:
+            params = resend.Emails.SendParams(
+                from_=from_addr,
+                to=clean_recipients,
+                subject=subject,
+                html=html,
+            )
+            res = resend.Emails.send(params)
+            email_id = res.get("id") if isinstance(res, dict) else getattr(res, "id", str(res))
+            logger.info(
+                "Resend email sent successfully | Resend ID: %s | To: %s | From: %s",
+                email_id, clean_recipients, from_addr,
+            )
+            return
+        except Exception as primary_err:
+            logger.error(
+                "Resend email send failed | From: '%s' | To: %s | Error: %s (%s)",
+                from_addr, clean_recipients, primary_err, type(primary_err).__name__,
+                exc_info=True,
+            )
+
+            # If the primary sender was not the Resend sandbox address, attempt automatic fallback
+            is_already_fallback = "onboarding@resend.dev" in from_addr.lower()
+            if not is_already_fallback:
+                logger.warning(
+                    "Retrying Resend email with fallback sender '%s' due to failure with '%s'...",
+                    self.FALLBACK_FROM, from_addr,
+                )
+                try:
+                    fallback_params = resend.Emails.SendParams(
+                        from_=self.FALLBACK_FROM,
+                        to=clean_recipients,
+                        subject=subject,
+                        html=html,
+                    )
+                    fallback_res = resend.Emails.send(fallback_params)
+                    fallback_id = (
+                        fallback_res.get("id")
+                        if isinstance(fallback_res, dict)
+                        else getattr(fallback_res, "id", str(fallback_res))
+                    )
+                    logger.info(
+                        "Resend fallback email sent successfully | Resend ID: %s | To: %s | From: %s",
+                        fallback_id, clean_recipients, self.FALLBACK_FROM,
+                    )
+                    return
+                except Exception as fallback_err:
+                    logger.error(
+                        "Resend fallback send also failed | From: '%s' | To: %s | Error: %s (%s)",
+                        self.FALLBACK_FROM, clean_recipients, fallback_err, type(fallback_err).__name__,
+                        exc_info=True,
+                    )
+                    raise RuntimeError(
+                        f"Failed to send email via Resend. Primary attempt ('{from_addr}') failed: {primary_err}. "
+                        f"Fallback attempt ('{self.FALLBACK_FROM}') failed: {fallback_err}. "
+                        f"Note: On Resend free tier, verify your domain in Resend dashboard or ensure recipient matches account email."
+                    ) from fallback_err
+
+            # If it was already using fallback and still failed:
+            raise RuntimeError(
+                f"Failed to send email via Resend: {primary_err}. "
+                f"Note: On Resend free tier with onboarding@resend.dev, emails can only be delivered to "
+                f"the email address registered with your Resend account, or to domains verified in Resend."
+            ) from primary_err
 
 
 # ---------------------------------------------------------------------------
@@ -56,9 +127,10 @@ class ResendEmailService(EmailService):
 
 class LogEmailService(EmailService):
     def send(self, *, to: str | list[str], subject: str, html: str) -> None:
+        recipients = to if isinstance(to, list) else [to]
         logger.info(
-            "[EMAIL LOG] To: %s | Subject: %s | Body preview: %.200s",
-            to, subject, html,
+            "[EMAIL LOG / DEV MODE] To: %s | Subject: %s | Body preview: %.200s",
+            recipients, subject, html,
         )
 
 
@@ -67,7 +139,9 @@ class LogEmailService(EmailService):
 # ---------------------------------------------------------------------------
 
 def get_email_service() -> EmailService:
-    if not cfg.RESEND_API_KEY or cfg.RESEND_API_KEY == "log":
+    api_key = (cfg.RESEND_API_KEY or "").strip()
+    if not api_key or api_key.lower() == "log":
+        logger.debug("Using LogEmailService (RESEND_API_KEY is unset or 'log')")
         return LogEmailService()
     return ResendEmailService()
 
