@@ -43,13 +43,15 @@ VALUES ('your-email@example.com', 'Your Name', 'owner');
 3. Set a strong password (you can change it later)
 4. Alternatively, use magic link login — no password needed
 
-### 1.6 — Create a Resend Account (for email sending)
-1. Go to [https://resend.com](https://resend.com) → Sign up (free tier: 100 emails/day)
-2. Go to **Domains** → Add your domain (e.g. `narkadhai.org`) and verify DNS records
-3. Go to **API Keys** → Create a new key → Copy it as `RESEND_API_KEY`
-4. Set `EMAIL_FROM` to a verified address like `Narkadhai <noreply@narkadhai.org>`
+### 1.6 — Configure Gmail SMTP (for email sending)
+1. Use your Gmail account (e.g. `support.narkadhai@gmail.com`)
+2. Go to Google Account Settings → **Security** → Enable **2-Step Verification** (if not already enabled)
+3. Go to **App Passwords** (search "App passwords" in Google Account) → Generate a new App Password for "Narkadhai Mail"
+4. Copy the generated 16-character password as `GMAIL_APP_PASSWORD`
+5. Set `GMAIL_USER` to `support.narkadhai@gmail.com`
+6. Set `EMAIL_FROM` to `Narkadhai <support.narkadhai@gmail.com>`
 
-> 💡 If you don't have a custom domain yet, you can use `onboarding@resend.dev` for testing only (sends only to the Resend account owner's email). Switch to a real domain before going live.
+> 💡 For local development, set `GMAIL_APP_PASSWORD=log` to print emails to the terminal console instead of sending them.
 
 ### 1.7 — Generate Your UPI Payment QR Code
 1. Open your UPI app (GPay, PhonePe, Paytm, etc.) → Find "Receive Money" / "QR Code"
@@ -96,9 +98,13 @@ Then they must also be added as Supabase Auth users (Authentication → Users).
 | `SUPABASE_URL` | Same Supabase project URL | 🔒 Secret |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key — full DB access, backend-only! | 🔒 Secret — NEVER expose to frontend |
 | `SUPABASE_JWT_SECRET` | Found in Supabase → Settings → API → JWT Secret. Used to verify auth tokens. | 🔒 Secret |
-| `RESEND_API_KEY` | Your Resend API key. Set to `log` for local dev (prints emails instead of sending). | 🔒 Secret |
-| `EMAIL_FROM` | The "From" address for outgoing emails e.g. `Narkadhai <noreply@narkadhai.org>` | 🔒 Secret |
-| `OWNER_EMAIL` | Owner's email for fallback notification (also covered by authorized_admins table) | 🔒 Secret |
+| `GMAIL_USER` | Gmail address e.g. `support.narkadhai@gmail.com` | 🔒 Secret |
+| `GMAIL_APP_PASSWORD` | 16-character Google App Password. Set to `log` for local dev. | 🔒 Secret |
+| `SMTP_HOST` | `smtp.gmail.com` | 🔒 Secret |
+| `SMTP_PORT` | `587` | 🔒 Secret |
+| `SMTP_TLS` | `True` | 🔒 Secret |
+| `EMAIL_FROM` | The "From" address for outgoing emails e.g. `Narkadhai <support.narkadhai@gmail.com>` | 🔒 Secret |
+| `OWNER_EMAIL` | Owner's email for notification e.g. `support.narkadhai@gmail.com` | 🔒 Secret |
 | `FRONTEND_URL` | Your deployed frontend URL for CORS e.g. `https://narkadhai.vercel.app` | 🔒 Secret |
 | `ENVIRONMENT` | `production` for live, `development` for local | 🔒 Secret |
 
@@ -167,7 +173,7 @@ After deployment, manually test each of these:
 | Login works | Go to `/login`, log in with your admin email → should land on `/admin` |
 | Login rejects unauthorized | Try logging in with a non-admin email → should get "not authorized" message |
 | Donate form works | Fill out and submit the donate form → check Supabase donations table for the new row |
-| Email sends | Check your inbox (or Resend dashboard) for thank-you and notification emails |
+| Email sends | Check your inbox for thank-you and notification emails |
 | Contact form works | Submit contact form → check `contact_messages` table + owner email notification |
 | Admin verify works | In `/admin/donations`, mark a donation as Verified → check public tracker updates |
 | QR code shows | Upload QR in admin settings → check it appears on `/donate` |

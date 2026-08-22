@@ -406,70 +406,79 @@ class TestAdminEndpoints(unittest.TestCase):
         resp_del = client.delete("/api/community-messages/cm1")
         self.assertEqual(resp_del.status_code, 204)
 
-    @patch("resend.Emails.send")
-    def test_resend_email_service_success(self, mock_resend_send):
-        """Test successful email send via Resend."""
-        from app.services.email_service import ResendEmailService
+    @patch("smtplib.SMTP")
+    def test_gmail_smtp_email_service_success(self, mock_smtp_cls):
+        """Test successful email send via Gmail SMTP."""
+        from app.services.email_service import GmailSMTPEmailService
         from app.config import settings
 
-        mock_resend_send.return_value = {"id": "resend_123"}
-        with patch.object(settings, "RESEND_API_KEY", "re_test_key"), \
-             patch.object(settings, "EMAIL_FROM", "Narkadhai <onboarding@resend.dev>"):
-            svc = ResendEmailService()
+        mock_server = MagicMock()
+        mock_smtp_cls.return_value.__enter__.return_value = mock_server
+
+        with patch.object(settings, "GMAIL_USER", "support.narkadhai@gmail.com"), \
+             patch.object(settings, "GMAIL_APP_PASSWORD", "test_app_pwd"), \
+             patch.object(settings, "SMTP_HOST", "smtp.gmail.com"), \
+             patch.object(settings, "SMTP_PORT", 587), \
+             patch.object(settings, "SMTP_TLS", True), \
+             patch.object(settings, "EMAIL_FROM", "Narkadhai <support.narkadhai@gmail.com>"):
+            svc = GmailSMTPEmailService()
             svc.send(to="donor@example.com", subject="Thank you", html="<p>Thanks!</p>")
-            mock_resend_send.assert_called_once()
-            call_params = mock_resend_send.call_args[0][0]
-            self.assertEqual(call_params["to"], ["donor@example.com"])
-            self.assertEqual(call_params["from_"], "Narkadhai <onboarding@resend.dev>")
 
-    @patch("resend.Emails.send")
-    def test_resend_email_service_fallback_on_unverified_domain(self, mock_resend_send):
-        """Test that unverified custom domain automatically falls back to onboarding@resend.dev."""
-        from app.services.email_service import ResendEmailService
+            mock_smtp_cls.assert_called_once_with("smtp.gmail.com", 587, timeout=15)
+            mock_server.starttls.assert_called_once()
+            mock_server.login.assert_called_once_with("support.narkadhai@gmail.com", "test_app_pwd")
+            mock_server.sendmail.assert_called_once()
+
+            args, kwargs = mock_server.sendmail.call_args
+            self.assertEqual(args[0], "Narkadhai <support.narkadhai@gmail.com>")
+            self.assertEqual(args[1], ["donor@example.com"])
+            self.assertIn("Subject: Thank you", args[2])
+            self.assertIn("From: Narkadhai <support.narkadhai@gmail.com>", args[2])
+            self.assertIn("To: donor@example.com", args[2])
+
+    @patch("smtplib.SMTP")
+    def test_gmail_smtp_email_service_failure_raises_runtime_error(self, mock_smtp_cls):
+        """Test that SMTP failure raises a descriptive RuntimeError."""
+        from app.services.email_service import GmailSMTPEmailService
         from app.config import settings
 
-        # First call fails (domain unverified error), second call (fallback) succeeds
-        mock_resend_send.side_effect = [
-            Exception("The domain customdomain.org is not verified"),
-            {"id": "resend_fallback_456"}
-        ]
-        with patch.object(settings, "RESEND_API_KEY", "re_test_key"), \
-             patch.object(settings, "EMAIL_FROM", "Narkadhai <noreply@customdomain.org>"):
-            svc = ResendEmailService()
-            svc.send(to="donor@example.com", subject="Thank you", html="<p>Thanks!</p>")
-            self.assertEqual(mock_resend_send.call_count, 2)
-            # Second call must use fallback sender
-            fallback_params = mock_resend_send.call_args_list[1][0][0]
-            self.assertEqual(fallback_params["from_"], "Narkadhai <onboarding@resend.dev>")
+        mock_server = MagicMock()
+        mock_server.sendmail.side_effect = Exception("SMTP authentication failed")
+        mock_smtp_cls.return_value.__enter__.return_value = mock_server
 
-    @patch("resend.Emails.send")
-    def test_resend_email_service_both_fail_raises_runtime_error(self, mock_resend_send):
-        """Test that if both primary and fallback fail, a descriptive RuntimeError is raised."""
-        from app.services.email_service import ResendEmailService
-        from app.config import settings
-
-        mock_resend_send.side_effect = [
-            Exception("Domain unverified"),
-            Exception("Recipient not allowed on free tier")
-        ]
-        with patch.object(settings, "RESEND_API_KEY", "re_test_key"), \
-             patch.object(settings, "EMAIL_FROM", "Narkadhai <noreply@customdomain.org>"):
-            svc = ResendEmailService()
+        with patch.object(settings, "GMAIL_USER", "support.narkadhai@gmail.com"), \
+             patch.object(settings, "GMAIL_APP_PASSWORD", "test_app_pwd"):
+            svc = GmailSMTPEmailService()
             with self.assertRaises(RuntimeError) as ctx:
                 svc.send(to="donor@example.com", subject="Thank you", html="<p>Thanks!</p>")
-            self.assertIn("Failed to send email via Resend", str(ctx.exception))
-            self.assertIn("Recipient not allowed on free tier", str(ctx.exception))
+            self.assertIn("Failed to send email via Gmail SMTP", str(ctx.exception))
+            self.assertIn("SMTP authentication failed", str(ctx.exception))
 
-    def test_resend_email_service_missing_api_key(self):
-        """Test error when RESEND_API_KEY is missing."""
-        from app.services.email_service import ResendEmailService
+    def test_gmail_smtp_email_service_missing_credentials(self):
+        """Test error when GMAIL_APP_PASSWORD is missing or set to log."""
+        from app.services.email_service import GmailSMTPEmailService
         from app.config import settings
 
-        with patch.object(settings, "RESEND_API_KEY", ""):
-            svc = ResendEmailService()
+        with patch.object(settings, "GMAIL_USER", "support.narkadhai@gmail.com"), \
+             patch.object(settings, "GMAIL_APP_PASSWORD", ""):
+            svc = GmailSMTPEmailService()
             with self.assertRaises(RuntimeError) as ctx:
                 svc.send(to="donor@example.com", subject="Thank you", html="<p>Thanks!</p>")
-            self.assertIn("RESEND_API_KEY is not configured", str(ctx.exception))
+            self.assertIn("Gmail SMTP credentials", str(ctx.exception))
+
+    def test_get_email_service_factory(self):
+        """Test get_email_service returns LogEmailService when log/empty, and GmailSMTPEmailService when credentials present."""
+        from app.services.email_service import get_email_service, LogEmailService, GmailSMTPEmailService
+        from app.config import settings
+
+        with patch.object(settings, "GMAIL_APP_PASSWORD", "log"):
+            svc = get_email_service()
+            self.assertIsInstance(svc, LogEmailService)
+
+        with patch.object(settings, "GMAIL_USER", "support.narkadhai@gmail.com"), \
+             patch.object(settings, "GMAIL_APP_PASSWORD", "secret123"):
+            svc = get_email_service()
+            self.assertIsInstance(svc, GmailSMTPEmailService)
 
 
 if __name__ == "__main__":

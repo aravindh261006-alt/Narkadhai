@@ -10,10 +10,17 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: str = ""
     SUPABASE_JWT_SECRET: str = ""
 
-    # Resend (email)
+    # Gmail SMTP (email)
+    GMAIL_USER: str = "support.narkadhai@gmail.com"
+    GMAIL_APP_PASSWORD: str = ""
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_TLS: bool = True
+    EMAIL_FROM: str = "Narkadhai <support.narkadhai@gmail.com>"
+    OWNER_EMAIL: str = "support.narkadhai@gmail.com"         # notification recipient
+
+    # Legacy Resend support (optional fallback)
     RESEND_API_KEY: str = ""
-    EMAIL_FROM: str = "Narkadhai <onboarding@resend.dev>"
-    OWNER_EMAIL: str = ""         # notification recipient
 
     # CORS
     FRONTEND_URL: str = "https://narkadhai.vercel.app,http://localhost:5173"

@@ -7,7 +7,7 @@ A full-stack donation and transparency website for the Narkadhai initiative — 
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS v4
 - **Backend**: FastAPI (Python) + Mangum (Vercel serverless)
 - **Database & Auth**: Supabase (Postgres + Supabase Auth + Storage)
-- **Email**: Resend (abstracted behind a swappable email service module)
+- **Email**: Gmail SMTP (smtp.gmail.com:587 with STARTTLS)
 - **Deployment**: Vercel
 
 ## Project Structure

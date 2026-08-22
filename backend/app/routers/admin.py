@@ -208,7 +208,7 @@ async def add_admin(
         db.table("authorized_admins").delete().eq("email", email_val).execute()
         raise HTTPException(status_code=500, detail=f"Failed to generate Supabase invite: {e}")
 
-    # 3. Send email via Resend email service
+    # 3. Send email via email service
     if invite_link:
         email_svc = email.get_email_service()
         subject = "Invitation to join Narkadhai Admin"
