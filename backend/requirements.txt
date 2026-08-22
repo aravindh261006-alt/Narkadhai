@@ -8,6 +8,7 @@ python-multipart>=0.0.12
 pydantic>=2.9.0
 pydantic-core>=2.23.0
 pydantic-settings>=2.5.0
+resend>=2.4.0
 slowapi>=0.1.9
 python-dotenv>=1.0.1
 email-validator>=2.2.0

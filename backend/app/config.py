@@ -14,13 +14,16 @@ class Settings(BaseSettings):
     GMAIL_USER: str = "support.narkadhai@gmail.com"
     GMAIL_APP_PASSWORD: str = ""
     SMTP_HOST: str = "smtp.gmail.com"
-    SMTP_PORT: int = 587
-    SMTP_TLS: bool = True
+    SMTP_PORT: int = 465
+    SMTP_SSL: bool = True
+    SMTP_TLS: bool = False
     EMAIL_FROM: str = "Narkadhai <support.narkadhai@gmail.com>"
+    EMAIL_REPLY_TO: str = "support.narkadhai@gmail.com"
     OWNER_EMAIL: str = "support.narkadhai@gmail.com"         # notification recipient
 
-    # Legacy Resend support (optional fallback)
+    # Resend fallback (HTTPS port 443 — works on Render free tier without domain verification)
     RESEND_API_KEY: str = ""
+    RESEND_FROM: str = "Narkadhai <onboarding@resend.dev>"
 
     # CORS
     FRONTEND_URL: str = "https://narkadhai.vercel.app,http://localhost:5173"
