@@ -43,15 +43,16 @@ VALUES ('your-email@example.com', 'Your Name', 'owner');
 3. Set a strong password (you can change it later)
 4. Alternatively, use magic link login — no password needed
 
-### 1.6 — Configure Gmail SMTP (for email sending)
-1. Use your Gmail account (e.g. `support.narkadhai@gmail.com`)
-2. Go to Google Account Settings → **Security** → Enable **2-Step Verification** (if not already enabled)
-3. Go to **App Passwords** (search "App passwords" in Google Account) → Generate a new App Password for "Narkadhai Mail"
-4. Copy the generated 16-character password as `GMAIL_APP_PASSWORD`
-5. Set `GMAIL_USER` to `support.narkadhai@gmail.com`
-6. Set `EMAIL_FROM` to `Narkadhai <support.narkadhai@gmail.com>`
+### 1.6 — Configure Gmail API OAuth2 (for email sending)
+1. Go to Google Cloud Console → Create or select project
+2. Enable the **Gmail API**
+3. Create OAuth 2.0 Client ID Credentials (Web Application)
+4. Authorize redirect URI or generate a Refresh Token with scope `https://www.googleapis.com/auth/gmail.send`
+5. Copy `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, and `GMAIL_REFRESH_TOKEN`
+6. Set `GMAIL_USER` to `support.narkadhai@gmail.com`
+7. Set `EMAIL_FROM` to `Narkadhai <support.narkadhai@gmail.com>`
 
-> 💡 For local development, set `GMAIL_APP_PASSWORD=log` to print emails to the terminal console instead of sending them.
+> 💡 For local development, set `GMAIL_REFRESH_TOKEN=log` to print emails to the terminal console instead of sending them.
 
 ### 1.7 — Generate Your UPI Payment QR Code
 1. Open your UPI app (GPay, PhonePe, Paytm, etc.) → Find "Receive Money" / "QR Code"
@@ -92,18 +93,18 @@ Then they must also be added as Supabase Auth users (Authentication → Users).
 | `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key — used only for auth and storage from the browser | ✅ Public — safe in frontend |
 | `VITE_API_BASE_URL` | Base URL for API calls (set to `/api` for same-origin Vercel deployment) | ✅ Public |
 
-### Backend — set in Vercel Dashboard (secret, never expose to frontend)
+### Backend — set in Vercel / Render Dashboard (secret, never expose to frontend)
 | Variable | Description | Public/Secret |
 |---|---|---|
 | `SUPABASE_URL` | Same Supabase project URL | 🔒 Secret |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key — full DB access, backend-only! | 🔒 Secret — NEVER expose to frontend |
 | `SUPABASE_JWT_SECRET` | Found in Supabase → Settings → API → JWT Secret. Used to verify auth tokens. | 🔒 Secret |
 | `GMAIL_USER` | Gmail address e.g. `support.narkadhai@gmail.com` | 🔒 Secret |
-| `GMAIL_APP_PASSWORD` | 16-character Google App Password. Set to `log` for local dev. | 🔒 Secret |
-| `SMTP_HOST` | `smtp.gmail.com` | 🔒 Secret |
-| `SMTP_PORT` | `587` | 🔒 Secret |
-| `SMTP_TLS` | `True` | 🔒 Secret |
+| `GMAIL_CLIENT_ID` | Google OAuth2 Client ID | 🔒 Secret |
+| `GMAIL_CLIENT_SECRET` | Google OAuth2 Client Secret | 🔒 Secret |
+| `GMAIL_REFRESH_TOKEN` | Google OAuth2 Refresh Token (set to `log` for local dev) | 🔒 Secret |
 | `EMAIL_FROM` | The "From" address for outgoing emails e.g. `Narkadhai <support.narkadhai@gmail.com>` | 🔒 Secret |
+| `EMAIL_REPLY_TO` | The "Reply-To" address e.g. `support.narkadhai@gmail.com` | 🔒 Secret |
 | `OWNER_EMAIL` | Owner's email for notification e.g. `support.narkadhai@gmail.com` | 🔒 Secret |
 | `FRONTEND_URL` | Your deployed frontend URL for CORS e.g. `https://narkadhai.vercel.app` | 🔒 Secret |
 | `ENVIRONMENT` | `production` for live, `development` for local | 🔒 Secret |

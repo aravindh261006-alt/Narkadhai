@@ -10,20 +10,14 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: str = ""
     SUPABASE_JWT_SECRET: str = ""
 
-    # Gmail SMTP (email)
+    # Gmail API (OAuth2 over HTTPS 443)
     GMAIL_USER: str = "support.narkadhai@gmail.com"
-    GMAIL_APP_PASSWORD: str = ""
-    SMTP_HOST: str = "smtp.gmail.com"
-    SMTP_PORT: int = 465
-    SMTP_SSL: bool = True
-    SMTP_TLS: bool = False
+    GMAIL_CLIENT_ID: str = ""
+    GMAIL_CLIENT_SECRET: str = ""
+    GMAIL_REFRESH_TOKEN: str = ""
     EMAIL_FROM: str = "Narkadhai <support.narkadhai@gmail.com>"
     EMAIL_REPLY_TO: str = "support.narkadhai@gmail.com"
     OWNER_EMAIL: str = "support.narkadhai@gmail.com"         # notification recipient
-
-    # Resend fallback (HTTPS port 443 — works on Render free tier without domain verification)
-    RESEND_API_KEY: str = ""
-    RESEND_FROM: str = "Narkadhai <onboarding@resend.dev>"
 
     # CORS
     FRONTEND_URL: str = "https://narkadhai.vercel.app,http://localhost:5173"

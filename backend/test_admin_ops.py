@@ -406,121 +406,74 @@ class TestAdminEndpoints(unittest.TestCase):
         resp_del = client.delete("/api/community-messages/cm1")
         self.assertEqual(resp_del.status_code, 204)
 
-    @patch("smtplib.SMTP_SSL")
-    def test_gmail_smtp_email_service_ssl_success(self, mock_smtp_ssl_cls):
-        """Test successful email send via Gmail SMTP SSL (port 465)."""
-        from app.services.email_service import GmailSMTPEmailService
+    @patch("app.services.email_service.build")
+    @patch("app.services.email_service.Credentials")
+    def test_gmail_api_email_service_success(self, mock_creds_cls, mock_build):
+        """Test successful email send via Gmail REST API with OAuth2."""
+        import base64
+        from app.services.email_service import GmailAPIEmailService
         from app.config import settings
 
-        mock_server = MagicMock()
-        mock_smtp_ssl_cls.return_value.__enter__.return_value = mock_server
+        mock_creds = MagicMock()
+        mock_creds.valid = True
+        mock_creds_cls.return_value = mock_creds
+
+        mock_service = MagicMock()
+        mock_build.return_value = mock_service
+        mock_send_exec = mock_service.users.return_value.messages.return_value.send.return_value.execute
+        mock_send_exec.return_value = {"id": "gmail_msg_123"}
 
         with patch.object(settings, "GMAIL_USER", "support.narkadhai@gmail.com"), \
-             patch.object(settings, "GMAIL_APP_PASSWORD", "test_app_pwd"), \
-             patch.object(settings, "SMTP_HOST", "smtp.gmail.com"), \
-             patch.object(settings, "SMTP_PORT", 465), \
-             patch.object(settings, "SMTP_SSL", True), \
+             patch.object(settings, "GMAIL_CLIENT_ID", "test_client_id"), \
+             patch.object(settings, "GMAIL_CLIENT_SECRET", "test_client_secret"), \
+             patch.object(settings, "GMAIL_REFRESH_TOKEN", "test_refresh_token"), \
              patch.object(settings, "EMAIL_FROM", "Narkadhai <support.narkadhai@gmail.com>"), \
              patch.object(settings, "EMAIL_REPLY_TO", "support.narkadhai@gmail.com"):
-            svc = GmailSMTPEmailService()
+            svc = GmailAPIEmailService()
             svc.send(to="donor@example.com", subject="Thank you", html="<p>Thanks!</p>")
 
-            mock_smtp_ssl_cls.assert_called_once_with("smtp.gmail.com", 465, timeout=10)
-            mock_server.login.assert_called_once_with("support.narkadhai@gmail.com", "test_app_pwd")
-            mock_server.sendmail.assert_called_once()
+            mock_build.assert_called_once_with("gmail", "v1", credentials=mock_creds, cache_discovery=False)
+            mock_service.users.return_value.messages.return_value.send.assert_called_once()
 
-            args, kwargs = mock_server.sendmail.call_args
-            self.assertEqual(args[0], "Narkadhai <support.narkadhai@gmail.com>")
-            self.assertEqual(args[1], ["donor@example.com"])
-            self.assertIn("Subject: Thank you", args[2])
-            self.assertIn("From: Narkadhai <support.narkadhai@gmail.com>", args[2])
-            self.assertIn("Reply-To: support.narkadhai@gmail.com", args[2])
-            self.assertIn("To: donor@example.com", args[2])
+            call_kwargs = mock_service.users.return_value.messages.return_value.send.call_args[1]
+            self.assertEqual(call_kwargs["userId"], "me")
+            raw_b64 = call_kwargs["body"]["raw"]
+            raw_decoded = base64.urlsafe_b64decode(raw_b64.encode("utf-8")).decode("utf-8", errors="ignore")
 
-    @patch("resend.Emails.send")
-    def test_resend_email_service_with_reply_to(self, mock_resend_send):
-        """Test Resend email service with onboarding@resend.dev and support.narkadhai@gmail.com reply-to."""
-        from app.services.email_service import ResendEmailService
+            self.assertIn("Subject: Thank you", raw_decoded)
+            self.assertIn("From: Narkadhai <support.narkadhai@gmail.com>", raw_decoded)
+            self.assertIn("Reply-To: support.narkadhai@gmail.com", raw_decoded)
+            self.assertIn("To: donor@example.com", raw_decoded)
+
+    def test_gmail_api_email_service_missing_credentials(self):
+        """Test error when GMAIL_REFRESH_TOKEN or OAuth credentials are missing."""
+        from app.services.email_service import GmailAPIEmailService
         from app.config import settings
 
-        mock_resend_send.return_value = {"id": "resend_123"}
-        with patch.object(settings, "RESEND_API_KEY", "re_test_key"), \
-             patch.object(settings, "RESEND_FROM", "Narkadhai <onboarding@resend.dev>"), \
-             patch.object(settings, "EMAIL_REPLY_TO", "support.narkadhai@gmail.com"):
-            svc = ResendEmailService()
-            svc.send(to="donor@example.com", subject="Thank you", html="<p>Thanks!</p>")
-
-            mock_resend_send.assert_called_once()
-            call_params = mock_resend_send.call_args[0][0]
-            self.assertEqual(call_params["from"], "Narkadhai <onboarding@resend.dev>")
-            self.assertEqual(call_params["reply_to"], "support.narkadhai@gmail.com")
-            self.assertEqual(call_params["to"], ["donor@example.com"])
-            self.assertEqual(call_params["subject"], "Thank you")
-
-    @patch("resend.Emails.send")
-    @patch("smtplib.SMTP_SSL")
-    def test_hybrid_email_service_fallback_on_network_block(self, mock_smtp_ssl_cls, mock_resend_send):
-        """Test that if Gmail SMTP fails (e.g. Render port block), it automatically falls back to Resend API."""
-        from app.services.email_service import HybridEmailService
-        from app.config import settings
-
-        mock_server = MagicMock()
-        mock_server.login.side_effect = OSError(101, "Network is unreachable")
-        mock_smtp_ssl_cls.return_value.__enter__.return_value = mock_server
-
-        mock_resend_send.return_value = {"id": "resend_fallback_789"}
-
-        with patch.object(settings, "GMAIL_USER", "support.narkadhai@gmail.com"), \
-             patch.object(settings, "GMAIL_APP_PASSWORD", "test_app_pwd"), \
-             patch.object(settings, "RESEND_API_KEY", "re_test_key"), \
-             patch.object(settings, "EMAIL_REPLY_TO", "support.narkadhai@gmail.com"):
-            svc = HybridEmailService()
-            svc.send(to="donor@example.com", subject="Thank you", html="<p>Thanks!</p>")
-
-            mock_smtp_ssl_cls.assert_called_once()
-            mock_resend_send.assert_called_once()
-            call_params = mock_resend_send.call_args[0][0]
-            self.assertEqual(call_params["reply_to"], "support.narkadhai@gmail.com")
-
-    def test_gmail_smtp_email_service_missing_credentials(self):
-        """Test error when GMAIL_APP_PASSWORD is missing or set to log."""
-        from app.services.email_service import GmailSMTPEmailService
-        from app.config import settings
-
-        with patch.object(settings, "GMAIL_USER", "support.narkadhai@gmail.com"), \
-             patch.object(settings, "GMAIL_APP_PASSWORD", ""):
-            svc = GmailSMTPEmailService()
+        with patch.object(settings, "GMAIL_CLIENT_ID", "test_id"), \
+             patch.object(settings, "GMAIL_CLIENT_SECRET", "test_secret"), \
+             patch.object(settings, "GMAIL_REFRESH_TOKEN", ""):
+            svc = GmailAPIEmailService()
             with self.assertRaises(RuntimeError) as ctx:
                 svc.send(to="donor@example.com", subject="Thank you", html="<p>Thanks!</p>")
-            self.assertIn("Gmail SMTP credentials", str(ctx.exception))
+            self.assertIn("Gmail OAuth2 credentials", str(ctx.exception))
 
     def test_get_email_service_factory(self):
-        """Test get_email_service returns correct service instance based on config."""
-        from app.services.email_service import get_email_service, LogEmailService, GmailSMTPEmailService, ResendEmailService, HybridEmailService
+        """Test get_email_service returns LogEmailService when log/empty, and GmailAPIEmailService when configured."""
+        from app.services.email_service import get_email_service, LogEmailService, GmailAPIEmailService
         from app.config import settings
 
-        with patch.object(settings, "GMAIL_APP_PASSWORD", "log"), \
-             patch.object(settings, "RESEND_API_KEY", ""):
+        with patch.object(settings, "GMAIL_CLIENT_ID", "id"), \
+             patch.object(settings, "GMAIL_CLIENT_SECRET", "sec"), \
+             patch.object(settings, "GMAIL_REFRESH_TOKEN", "log"):
             svc = get_email_service()
             self.assertIsInstance(svc, LogEmailService)
 
-        with patch.object(settings, "GMAIL_USER", "support.narkadhai@gmail.com"), \
-             patch.object(settings, "GMAIL_APP_PASSWORD", "secret123"), \
-             patch.object(settings, "RESEND_API_KEY", ""):
+        with patch.object(settings, "GMAIL_CLIENT_ID", "id"), \
+             patch.object(settings, "GMAIL_CLIENT_SECRET", "sec"), \
+             patch.object(settings, "GMAIL_REFRESH_TOKEN", "1//real_refresh_token"):
             svc = get_email_service()
-            self.assertIsInstance(svc, GmailSMTPEmailService)
-
-        with patch.object(settings, "GMAIL_USER", ""), \
-             patch.object(settings, "GMAIL_APP_PASSWORD", ""), \
-             patch.object(settings, "RESEND_API_KEY", "re_secret"):
-            svc = get_email_service()
-            self.assertIsInstance(svc, ResendEmailService)
-
-        with patch.object(settings, "GMAIL_USER", "support.narkadhai@gmail.com"), \
-             patch.object(settings, "GMAIL_APP_PASSWORD", "secret123"), \
-             patch.object(settings, "RESEND_API_KEY", "re_secret"):
-            svc = get_email_service()
-            self.assertIsInstance(svc, HybridEmailService)
+            self.assertIsInstance(svc, GmailAPIEmailService)
 
 
 if __name__ == "__main__":

@@ -1,18 +1,21 @@
 """
 Email service abstraction.
 
-Supports:
-1. Gmail SMTP with SSL (smtp.gmail.com:465) or STARTTLS (587)
-2. Resend API over HTTPS port 443 (free tier with onboarding@resend.dev and reply_to: support.narkadhai@gmail.com)
-3. Automatic hybrid fallback: attempts Gmail SMTP first; if Render free tier blocks outbound SMTP ports,
-   seamlessly falls back to Resend API over HTTPS.
-4. LogEmailService for local development when credentials are unset or set to "log".
+Primary implementation uses the Gmail REST API (v1) via OAuth2 (google-auth + google-api-python-client).
+This operates over standard HTTPS (port 443) which works reliably across all cloud hosting providers including Render's free tier.
+
+If GMAIL_REFRESH_TOKEN is empty or set to "log", emails are printed to stdout
+instead of sent. This allows local development without real credentials.
 """
+import base64
 import logging
-import smtplib
 from abc import ABC, abstractmethod
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
 
 from app.config import settings as cfg
 
@@ -30,19 +33,21 @@ class EmailService(ABC):
 
 
 # ---------------------------------------------------------------------------
-# Gmail SMTP implementation (Port 465 SSL / Port 587 STARTTLS)
+# Gmail API (OAuth2 over HTTPS port 443)
 # ---------------------------------------------------------------------------
 
-class GmailSMTPEmailService(EmailService):
-    """Email service using Gmail SMTP with SSL (port 465) or STARTTLS (port 587)."""
+class GmailAPIEmailService(EmailService):
+    """Email service using Google's official Gmail REST API with OAuth2."""
 
     def send(self, *, to: str | list[str], subject: str, html: str) -> None:
-        gmail_user = (cfg.GMAIL_USER or "").strip()
-        gmail_app_password = (cfg.GMAIL_APP_PASSWORD or "").strip()
+        client_id = (cfg.GMAIL_CLIENT_ID or "").strip()
+        client_secret = (cfg.GMAIL_CLIENT_SECRET or "").strip()
+        refresh_token = (cfg.GMAIL_REFRESH_TOKEN or "").strip()
+        user_email = (cfg.GMAIL_USER or "").strip() or "support.narkadhai@gmail.com"
 
-        if not gmail_user or not gmail_app_password or gmail_app_password.lower() == "log":
-            logger.error("GMAIL_USER or GMAIL_APP_PASSWORD is not configured. Cannot send email via SMTP.")
-            raise RuntimeError("Gmail SMTP credentials (GMAIL_USER / GMAIL_APP_PASSWORD) are not configured on the server.")
+        if not client_id or not client_secret or not refresh_token or refresh_token.lower() == "log":
+            logger.error("Gmail OAuth2 credentials (GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN) are not configured.")
+            raise RuntimeError("Gmail OAuth2 credentials are not configured on the server.")
 
         recipients = to if isinstance(to, list) else [to]
         clean_recipients = [r.strip() for r in recipients if r and r.strip()]
@@ -50,8 +55,8 @@ class GmailSMTPEmailService(EmailService):
             logger.warning("No valid email recipients provided")
             return
 
-        from_addr = (cfg.EMAIL_FROM or "").strip() or f"Narkadhai <{gmail_user}>"
-        reply_to = (cfg.EMAIL_REPLY_TO or "").strip() or gmail_user
+        from_addr = (cfg.EMAIL_FROM or "").strip() or f"Narkadhai <{user_email}>"
+        reply_to = (cfg.EMAIL_REPLY_TO or "").strip() or user_email
 
         # Construct MIME message
         msg = MIMEMultipart("alternative")
@@ -62,118 +67,52 @@ class GmailSMTPEmailService(EmailService):
             msg["Reply-To"] = reply_to
         msg.attach(MIMEText(html, "html", "utf-8"))
 
-        smtp_host = (cfg.SMTP_HOST or "smtp.gmail.com").strip()
-        smtp_port = int(cfg.SMTP_PORT or 465)
-        use_ssl = bool(cfg.SMTP_SSL or smtp_port == 465)
-        use_tls = bool(cfg.SMTP_TLS and not use_ssl)
+        raw_message = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
 
         logger.info(
-            "Attempting to send email via Gmail SMTP | Host: %s:%d (SSL=%s, TLS=%s) | From: '%s' | Reply-To: '%s' | To: %s | Subject: %s",
-            smtp_host, smtp_port, use_ssl, use_tls, from_addr, reply_to, clean_recipients, subject,
-        )
-
-        try:
-            if use_ssl:
-                with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10) as server:
-                    server.login(gmail_user, gmail_app_password)
-                    server.sendmail(from_addr, clean_recipients, msg.as_string())
-            else:
-                with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
-                    if use_tls:
-                        server.starttls()
-                    server.login(gmail_user, gmail_app_password)
-                    server.sendmail(from_addr, clean_recipients, msg.as_string())
-
-            logger.info(
-                "Gmail SMTP email sent successfully | To: %s | From: %s | Subject: %s",
-                clean_recipients, from_addr, subject,
-            )
-        except Exception as err:
-            logger.error(
-                "Gmail SMTP email send failed | Host: %s:%d | From: '%s' | To: %s | Error: %s (%s)",
-                smtp_host, smtp_port, from_addr, clean_recipients, err, type(err).__name__,
-                exc_info=True,
-            )
-            raise RuntimeError(f"Failed to send email via Gmail SMTP: {err}") from err
-
-
-# ---------------------------------------------------------------------------
-# Resend API implementation (HTTPS port 443 — works everywhere including Render)
-# ---------------------------------------------------------------------------
-
-class ResendEmailService(EmailService):
-    """Email service using Resend REST API (HTTPS port 443)."""
-
-    def send(self, *, to: str | list[str], subject: str, html: str) -> None:
-        import resend
-
-        api_key = (cfg.RESEND_API_KEY or "").strip()
-        if not api_key or api_key.lower() == "log":
-            logger.error("RESEND_API_KEY is not configured or is empty. Cannot send email via Resend.")
-            raise RuntimeError("RESEND_API_KEY is not configured on the server.")
-
-        resend.api_key = api_key
-        recipients = to if isinstance(to, list) else [to]
-        clean_recipients = [r.strip() for r in recipients if r and r.strip()]
-        if not clean_recipients:
-            logger.warning("No valid email recipients provided")
-            return
-
-        from_addr = (cfg.RESEND_FROM or "").strip() or "Narkadhai <onboarding@resend.dev>"
-        reply_to = (cfg.EMAIL_REPLY_TO or "").strip() or (cfg.GMAIL_USER or "support.narkadhai@gmail.com")
-
-        logger.info(
-            "Attempting to send email via Resend API (HTTPS 443) | From: '%s' | Reply-To: '%s' | To: %s | Subject: %s",
+            "Attempting to send email via Gmail API (HTTPS 443) | From: '%s' | Reply-To: '%s' | To: %s | Subject: %s",
             from_addr, reply_to, clean_recipients, subject,
         )
 
         try:
-            params = {
-                "from": from_addr,
-                "to": clean_recipients,
-                "subject": subject,
-                "html": html,
-                "reply_to": reply_to,
-            }
-            res = resend.Emails.send(params)
-            email_id = res.get("id") if isinstance(res, dict) else getattr(res, "id", str(res))
+            creds = Credentials(
+                token=None,
+                refresh_token=refresh_token,
+                token_uri="https://oauth2.googleapis.com/token",
+                client_id=client_id,
+                client_secret=client_secret,
+                scopes=["https://www.googleapis.com/auth/gmail.send"],
+            )
+
+            if not creds.valid:
+                creds.refresh(Request())
+
+            service = build("gmail", "v1", credentials=creds, cache_discovery=False)
+            res = (
+                service.users()
+                .messages()
+                .send(userId="me", body={"raw": raw_message})
+                .execute()
+            )
+
+            msg_id = res.get("id") if isinstance(res, dict) else getattr(res, "id", str(res))
             logger.info(
-                "Resend email sent successfully | Resend ID: %s | To: %s | From: %s | Reply-To: %s",
-                email_id, clean_recipients, from_addr, reply_to,
+                "Gmail API email sent successfully | Msg ID: %s | To: %s | From: %s | Subject: %s",
+                msg_id, clean_recipients, from_addr, subject,
             )
         except Exception as err:
             logger.error(
-                "Resend API email send failed | From: '%s' | To: %s | Error: %s (%s)",
+                "Gmail API email send failed | From: '%s' | To: %s | Error: %s (%s)",
                 from_addr, clean_recipients, err, type(err).__name__,
                 exc_info=True,
             )
-            raise RuntimeError(f"Failed to send email via Resend API: {err}") from err
+            raise RuntimeError(f"Failed to send email via Gmail API: {err}") from err
 
 
-# ---------------------------------------------------------------------------
-# Hybrid implementation (Tries SMTP, falls back to Resend on network block)
-# ---------------------------------------------------------------------------
-
-class HybridEmailService(EmailService):
-    """Tries Gmail SMTP (port 465 SSL) first; falls back to Resend API (HTTPS 443) if SMTP is blocked."""
-
-    def __init__(self):
-        self.smtp_svc = GmailSMTPEmailService()
-        self.resend_svc = ResendEmailService()
-
-    def send(self, *, to: str | list[str], subject: str, html: str) -> None:
-        try:
-            self.smtp_svc.send(to=to, subject=subject, html=html)
-        except Exception as smtp_err:
-            resend_key = (cfg.RESEND_API_KEY or "").strip()
-            if resend_key and resend_key.lower() != "log":
-                logger.warning(
-                    "Gmail SMTP failed (%s: %s). Automatically falling back to Resend API (HTTPS 443)...",
-                    type(smtp_err).__name__, smtp_err,
-                )
-                self.resend_svc.send(to=to, subject=subject, html=html)
-            else:
-                raise
+# Backward compatibility aliases
+GmailSMTPEmailService = GmailAPIEmailService
+ResendEmailService = GmailAPIEmailService
+HybridEmailService = GmailAPIEmailService
 
 
 # ---------------------------------------------------------------------------
@@ -194,24 +133,15 @@ class LogEmailService(EmailService):
 # ---------------------------------------------------------------------------
 
 def get_email_service() -> EmailService:
-    gmail_user = (cfg.GMAIL_USER or "").strip()
-    gmail_pass = (cfg.GMAIL_APP_PASSWORD or "").strip()
-    resend_key = (cfg.RESEND_API_KEY or "").strip()
+    client_id = (cfg.GMAIL_CLIENT_ID or "").strip()
+    client_secret = (cfg.GMAIL_CLIENT_SECRET or "").strip()
+    refresh_token = (cfg.GMAIL_REFRESH_TOKEN or "").strip()
 
-    has_gmail = bool(gmail_user and gmail_pass and gmail_pass.lower() != "log")
-    has_resend = bool(resend_key and resend_key.lower() != "log")
-
-    if not has_gmail and not has_resend:
-        logger.debug("Using LogEmailService (no active email credentials)")
+    if not client_id or not client_secret or not refresh_token or refresh_token.lower() == "log":
+        logger.debug("Using LogEmailService (Gmail OAuth2 credentials unset or set to 'log')")
         return LogEmailService()
 
-    if has_gmail and has_resend:
-        logger.debug("Using HybridEmailService (Gmail SMTP with Resend fallback)")
-        return HybridEmailService()
-    elif has_gmail:
-        return GmailSMTPEmailService()
-    else:
-        return ResendEmailService()
+    return GmailAPIEmailService()
 
 
 # ---------------------------------------------------------------------------
@@ -221,7 +151,7 @@ def get_email_service() -> EmailService:
 def send_donor_thankyou(
     *, donation_id: str, donor_name: str, donor_email: str, amount: float
 ) -> bool:
-    """Send thank-you email to donor with their name and amount in INR."""
+    """Send thank-you email to donor with their name and amount in INR via Gmail API."""
     svc = get_email_service()
     formatted_amount = _format_inr(amount)
     html = f"""
@@ -267,7 +197,7 @@ def send_owner_donation_notification(
     amount: float,
     utr: str | None,
 ) -> bool:
-    """Send notification to support.narkadhai@gmail.com / admins."""
+    """Send notification to support.narkadhai@gmail.com / admins via Gmail API."""
     svc = get_email_service()
     formatted_amount = _format_inr(amount)
     utr_line = f"<p><strong>UTR / Txn ID:</strong> {utr}</p>" if utr else ""
@@ -310,7 +240,7 @@ def send_contact_notification(
     sender_email: str,
     message: str,
 ) -> None:
-    """Send contact message notification to support.narkadhai@gmail.com / admins."""
+    """Send contact message notification to support.narkadhai@gmail.com / admins via Gmail API."""
     svc = get_email_service()
     recipients = list(owner_emails) if owner_emails else []
     primary_email = "support.narkadhai@gmail.com"
