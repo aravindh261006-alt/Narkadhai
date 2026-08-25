@@ -36,6 +36,9 @@ class EmailService(ABC):
 # Gmail API (OAuth2 over HTTPS port 443)
 # ---------------------------------------------------------------------------
 
+SCOPES = ['https://mail.google.com/']
+
+
 class GmailAPIEmailService(EmailService):
     """Email service using Google's official Gmail REST API with OAuth2."""
 
@@ -81,7 +84,7 @@ class GmailAPIEmailService(EmailService):
                 token_uri="https://oauth2.googleapis.com/token",
                 client_id=client_id,
                 client_secret=client_secret,
-                scopes=["https://www.googleapis.com/auth/gmail.send"],
+                scopes=SCOPES,
             )
 
             if not creds.valid:
