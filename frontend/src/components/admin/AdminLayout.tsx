@@ -52,7 +52,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     } catch {}
     await supabase.auth.signOut();
     toast.success('Logged out');
-    navigate('/login');
+    navigate('/admin');
   };
 
   const filteredNavItems = navItems.filter(item => {

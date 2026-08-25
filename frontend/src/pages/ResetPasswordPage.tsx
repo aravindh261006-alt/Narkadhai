@@ -128,7 +128,7 @@ export default function ResetPasswordPage() {
       toast.success('Password updated successfully! Please log in with your new password.');
 
       setTimeout(() => {
-        navigate('/login');
+        navigate('/admin');
       }, 2000);
     } catch (err: any) {
       toast.error(err?.message || 'Failed to set password');
@@ -164,7 +164,7 @@ export default function ResetPasswordPage() {
             </div>
             <div className="pt-2">
               <Link
-                to="/login"
+                to="/admin"
                 className="inline-flex items-center justify-center gap-2 w-full bg-primary-700 hover:bg-primary-800 text-white py-3.5 px-4 rounded-xl font-semibold text-sm transition-all shadow-md shadow-primary-700/20"
               >
                 <ArrowLeft className="w-4 h-4" /> Return to Login
@@ -182,7 +182,7 @@ export default function ResetPasswordPage() {
             </div>
             <div className="pt-2">
               <Link
-                to="/login"
+                to="/admin"
                 className="inline-flex items-center justify-center gap-2 w-full bg-primary-700 hover:bg-primary-800 text-white py-3.5 px-4 rounded-xl font-semibold text-sm transition-all"
               >
                 Go to Login Now
@@ -247,7 +247,7 @@ export default function ResetPasswordPage() {
             </button>
 
             <div className="text-center pt-2">
-              <Link to="/login" className="text-primary-600 hover:text-primary-800 text-xs font-medium hover:underline">
+              <Link to="/admin" className="text-primary-600 hover:text-primary-800 text-xs font-medium hover:underline">
                 Back to Login
               </Link>
             </div>

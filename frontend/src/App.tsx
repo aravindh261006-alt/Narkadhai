@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
@@ -15,7 +15,6 @@ import DonatePage from './pages/DonatePage';
 import ContactPage from './pages/ContactPage';
 
 // Auth & Admin
-import LoginPage from './pages/LoginPage';
 import AdminRoute from './components/admin/AdminRoute';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminDonations from './pages/admin/AdminDonations';
@@ -61,7 +60,7 @@ export default function App() {
           <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
 
           {/* Login & Password Reset */}
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={<Navigate to="/admin" replace />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* Admin (protected) */}

@@ -5,7 +5,11 @@ import { Heart, Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { adminApi } from '../lib/api';
 
-export default function LoginPage() {
+interface LoginPageProps {
+  onLoginSuccess?: () => void;
+}
+
+export default function LoginPage({ onLoginSuccess }: LoginPageProps = {}) {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,6 +69,9 @@ export default function LoginPage() {
       }
 
       toast.success('Welcome back!');
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      }
       navigate('/admin', { replace: true });
     } catch (err: any) {
       const msg = err?.message || 'Login failed';

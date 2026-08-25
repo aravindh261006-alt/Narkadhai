@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { adminApi } from '../../lib/api';
 import { Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import LoginPage from '../../pages/LoginPage';
 
 interface Props {
   children: ReactNode;
@@ -12,7 +12,6 @@ interface Props {
 type AuthState = 'loading' | 'authorized' | 'unauthorized';
 
 export default function AdminRoute({ children }: Props) {
-  const navigate = useNavigate();
   const [state, setState] = useState<AuthState>('loading');
 
   useEffect(() => {
@@ -30,7 +29,6 @@ export default function AdminRoute({ children }: Props) {
           if (!retrySession) {
             if (mounted) {
               setState('unauthorized');
-              navigate('/login', { replace: true });
             }
             return;
           }
@@ -46,7 +44,6 @@ export default function AdminRoute({ children }: Props) {
             toast.error('This account is not authorized to access the admin area.');
             if (mounted) {
               setState('unauthorized');
-              navigate('/login', { replace: true });
             }
           } else {
             // Network error, backend waking up, etc. — allow through to admin area
@@ -61,12 +58,13 @@ export default function AdminRoute({ children }: Props) {
 
     checkAuth();
 
-    // Listen only for explicit SIGNED_OUT events
+    // Listen for auth state changes
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || (!session && event !== 'INITIAL_SESSION')) {
+      if (event === 'SIGNED_IN' || (session && event !== 'SIGNED_OUT')) {
+        checkAuth();
+      } else if (event === 'SIGNED_OUT' || (!session && event !== 'INITIAL_SESSION')) {
         if (mounted) {
           setState('unauthorized');
-          navigate('/login', { replace: true });
         }
       }
     });
@@ -77,7 +75,7 @@ export default function AdminRoute({ children }: Props) {
         data.subscription.unsubscribe();
       }
     };
-  }, [navigate]);
+  }, []);
 
   if (state === 'loading') {
     return (
@@ -89,12 +87,7 @@ export default function AdminRoute({ children }: Props) {
   }
 
   if (state === 'unauthorized') {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-        <Loader2 className="w-8 h-8 text-primary-700 animate-spin mb-3" />
-        <p className="text-sm font-medium text-gray-600">Redirecting to login...</p>
-      </div>
-    );
+    return <LoginPage onLoginSuccess={() => setState('authorized')} />;
   }
 
   return <>{children}</>;

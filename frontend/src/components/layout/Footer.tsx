@@ -96,13 +96,10 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-primary-800 mt-8 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="border-t border-primary-800 mt-8 pt-8 flex items-center justify-center text-center">
           <p className="text-primary-400 text-xs">
             © {new Date().getFullYear()} Narkadhai. All rights reserved.
           </p>
-          <Link to="/login" className="text-primary-500 hover:text-primary-300 text-xs transition-colors">
-            Admin Login
-          </Link>
         </div>
       </div>
     </footer>
