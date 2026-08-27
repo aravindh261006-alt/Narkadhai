@@ -30,6 +30,16 @@ class PhotoAdd(BaseModel):
     photo_url: str
     caption: str | None = None
     media_type: str = "image"
+    display_order: int | None = None
+
+
+class PhotoOrderItem(BaseModel):
+    photo_id: str
+    display_order: int
+
+
+class ReorderPhotosPayload(BaseModel):
+    photos: list[PhotoOrderItem]
 
 
 @router.get("")
@@ -47,15 +57,28 @@ async def list_albums():
 
 @router.get("/{album_id}")
 async def get_album(album_id: str):
-    """Public: get a single album with its photos."""
+    """Public: get a single album with its photos sorted by display_order."""
     try:
         db = get_supabase()
         album_resp = db.table("albums").select("*").eq("id", album_id).single().execute()
         if not album_resp.data:
             raise HTTPException(status_code=404, detail="Album not found")
-        photos_resp = db.table("album_photos").select("*").eq("album_id", album_id).execute()
+        try:
+            photos_resp = (
+                db.table("album_photos")
+                .select("*")
+                .eq("album_id", album_id)
+                .order("display_order", desc=False)
+                .order("created_at", desc=False)
+                .execute()
+            )
+        except Exception as query_err:
+            logger.warning("Ordering by display_order failed (column may not exist yet): %s", query_err)
+            photos_resp = db.table("album_photos").select("*").eq("album_id", album_id).execute()
         album = album_resp.data
-        album["photos"] = photos_resp.data or []
+        photos = photos_resp.data or []
+        photos.sort(key=lambda p: (p.get("display_order") if p.get("display_order") is not None else 0, p.get("created_at") or ""))
+        album["photos"] = photos
         return album
     except HTTPException:
         raise
@@ -138,18 +161,33 @@ async def add_photo(
     try:
         db = get_supabase()
         logger.info("Admin %s adding photo to album %s", admin.email, album_id)
+
+        display_order = payload.display_order
+        if display_order is None:
+            try:
+                cnt_resp = db.table("album_photos").select("id", count="exact").eq("album_id", album_id).execute()
+                display_order = cnt_resp.count or 0
+            except Exception:
+                display_order = 0
+
         insert_data = {
             "album_id": album_id,
             "photo_url": payload.photo_url,
             "caption": payload.caption,
             "media_type": payload.media_type or "image",
+            "display_order": display_order,
         }
         try:
             resp = db.table("album_photos").insert(insert_data).execute()
         except Exception as insert_err:
-            if "media_type" in str(insert_err):
-                logger.warning("media_type column may not exist yet in album_photos. Falling back to insert without it: %s", insert_err)
-                fallback_data = {k: v for k, v in insert_data.items() if k != "media_type"}
+            err_str = str(insert_err)
+            if "media_type" in err_str or "display_order" in err_str:
+                logger.warning("media_type or display_order column may not exist yet in album_photos. Falling back: %s", insert_err)
+                fallback_data = {k: v for k, v in insert_data.items() if k not in ("media_type", "display_order")}
+                if "media_type" not in err_str:
+                    fallback_data["media_type"] = insert_data["media_type"]
+                if "display_order" not in err_str:
+                    fallback_data["display_order"] = insert_data["display_order"]
                 resp = db.table("album_photos").insert(fallback_data).execute()
             else:
                 raise
@@ -255,3 +293,38 @@ async def get_photo_upload_url(
     except Exception as e:
         logger.error("Error getting signed upload URL for album photo: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to generate upload URL: {str(e)}")
+
+
+@router.put("/{album_id}/photos/reorder")
+@router.patch("/{album_id}/photos/reorder")
+async def reorder_photos(
+    album_id: str,
+    payload: ReorderPhotosPayload,
+    admin: Annotated[AdminUser, Depends(require_owner)],
+):
+    """Owner only: update display_order for photos inside an album."""
+    try:
+        db = get_supabase()
+        logger.info("Admin %s reordering %d photos in album %s", admin.email, len(payload.photos), album_id)
+        updated = 0
+        for item in payload.photos:
+            try:
+                up_resp = (
+                    db.table("album_photos")
+                    .update({"display_order": item.display_order})
+                    .eq("id", item.photo_id)
+                    .eq("album_id", album_id)
+                    .execute()
+                )
+                if up_resp.data:
+                    updated += len(up_resp.data)
+            except Exception as item_err:
+                logger.warning("Failed to update display_order for photo %s: %s", item.photo_id, item_err)
+
+        return {"status": "ok", "updated_count": updated}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error reordering photos in album %s: %s", album_id, e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to reorder photos: {str(e)}")
+

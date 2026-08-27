@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Camera, PhoneCall, MapPin, ExternalLink, Calendar } from 'lucide-react';
 import { albumsApi } from '../lib/api';
@@ -39,6 +39,11 @@ export default function AlbumDetailPage() {
   useEffect(() => {
     if (id) albumsApi.get(id).then(setAlbum).catch(() => {}).finally(() => setLoading(false));
   }, [id]);
+
+  const sortedPhotos = useMemo(() => {
+    if (!album?.photos || !Array.isArray(album.photos)) return [];
+    return [...album.photos].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+  }, [album?.photos]);
 
   if (loading) {
     return (
@@ -155,18 +160,18 @@ export default function AlbumDetailPage() {
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-display text-2xl font-bold text-primary-900">Photos & Videos</h2>
           <span className="text-sm text-gray-500 font-medium">
-            {album.photos?.length || 0} item{album.photos?.length !== 1 ? 's' : ''}
+            {sortedPhotos.length} item{sortedPhotos.length !== 1 ? 's' : ''}
           </span>
         </div>
 
-        {(!album.photos || !Array.isArray(album.photos) || album.photos.length === 0) ? (
+        {sortedPhotos.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200 text-gray-400">
             <Camera className="w-16 h-16 mx-auto mb-4 opacity-20" />
             <p className="text-base font-medium">No photos or videos in this album yet.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {(Array.isArray(album.photos) ? album.photos : []).map(item => {
+            {sortedPhotos.map(item => {
               const isVideo = item.media_type === 'video' || /\.(mp4|mov|webm)(\?.*)?$/i.test(item.photo_url);
 
               if (isVideo) {

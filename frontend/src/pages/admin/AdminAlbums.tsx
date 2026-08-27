@@ -15,11 +15,210 @@ import {
   MapPin,
   Image as ImageIcon
 } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+  DragOverlay,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { albumsApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { formatDate, parseAlbumDescription, formatAlbumDescription } from '../../lib/utils';
-import type { Album, AlbumWithPhotos } from '../../types';
+import type { Album, AlbumWithPhotos, AlbumPhoto } from '../../types';
+
+interface SortablePhotoCardProps {
+  photo: AlbumPhoto;
+  index: number;
+  isCurrentCover: boolean;
+  onSetCover: (url: string) => void;
+  onDelete: (id: string) => void;
+}
+
+function SortablePhotoCard({
+  photo,
+  index,
+  isCurrentCover,
+  onSetCover,
+  onDelete,
+}: SortablePhotoCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: photo.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const isVideo = photo.media_type === 'video' || /\.(mp4|mov|webm|avi)(\?.*)?$/i.test(photo.photo_url);
+
+  if (isDragging) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="aspect-square rounded-2xl border-2 border-dashed border-primary-500 bg-primary-50/70 flex flex-col items-center justify-center p-4 text-primary-600 transition-all shadow-inner select-none"
+      >
+        <div className="w-10 h-10 rounded-2xl bg-primary-100/90 flex items-center justify-center text-primary-700 mb-2 shadow-xs">
+          <span className="text-2xl leading-none select-none font-bold">⠿</span>
+        </div>
+        <span className="text-xs font-bold uppercase tracking-wider text-primary-700">Drop Here</span>
+        <span className="text-[11px] text-primary-500 mt-0.5 font-medium">Slot #{index + 1}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`group relative aspect-square rounded-2xl overflow-hidden shadow-xs border transition-all cursor-grab active:cursor-grabbing ${
+        isCurrentCover
+          ? 'ring-3 ring-emerald-500 border-emerald-500 shadow-md'
+          : 'border-gray-200 hover:shadow-md bg-gray-900'
+      }`}
+    >
+      {/* Media content */}
+      {isVideo ? (
+        <>
+          <video
+            src={photo.photo_url}
+            className="w-full h-full object-cover pointer-events-none"
+            preload="metadata"
+            muted
+            playsInline
+          />
+          <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-xs text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 pointer-events-none z-10">
+            <span>▶</span> Video
+          </div>
+        </>
+      ) : (
+        <img
+          src={photo.photo_url}
+          alt={photo.caption || ''}
+          className="w-full h-full object-cover pointer-events-none"
+        />
+      )}
+
+      {/* Top-Left: Cover Badge OR Set as Cover Button */}
+      <div className="absolute top-2 left-2 z-20">
+        {isCurrentCover ? (
+          <span className="inline-flex items-center gap-1 bg-emerald-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-md">
+            <CheckCircle2 className="w-3.5 h-3.5" /> Cover
+          </span>
+        ) : (
+          <button
+            type="button"
+            onPointerDown={e => e.stopPropagation()}
+            onClick={e => {
+              e.stopPropagation();
+              onSetCover(photo.photo_url);
+            }}
+            className="inline-flex items-center gap-1 bg-black/60 hover:bg-emerald-600 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-xs shadow-md opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+            title="Set as album cover photo"
+          >
+            <Check className="w-3 h-3" /> Set as Cover
+          </button>
+        )}
+      </div>
+
+      {/* Top-Right: Delete Media Button */}
+      <button
+        type="button"
+        onPointerDown={e => e.stopPropagation()}
+        onClick={e => {
+          e.stopPropagation();
+          onDelete(photo.id);
+        }}
+        className="absolute top-2 right-2 z-20 bg-red-600/90 hover:bg-red-600 text-white p-1.5 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+        title="Delete media"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+
+      {/* Bottom-Right: Drag Handle badge with ⠿ icon */}
+      <div
+        className="absolute bottom-2 right-2 z-20 inline-flex items-center gap-1 bg-black/75 hover:bg-primary-700 text-white text-xs font-semibold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-xl backdrop-blur-md shadow-md border border-white/20 select-none transition-all hover:scale-105 pointer-events-none"
+        title="Drag to reorder"
+      >
+        <span className="text-base leading-none select-none font-bold">⠿</span>
+        <span className="text-[10px] sm:text-[11px] font-medium select-none">#{index + 1}</span>
+      </div>
+    </div>
+  );
+}
+
+function PhotoOverlayCard({
+  photo,
+  isCurrentCover,
+}: {
+  photo: AlbumPhoto;
+  isCurrentCover: boolean;
+}) {
+  const isVideo = photo.media_type === 'video' || /\.(mp4|mov|webm|avi)(\?.*)?$/i.test(photo.photo_url);
+
+  return (
+    <div
+      className={`relative aspect-square w-44 sm:w-56 rounded-2xl overflow-hidden shadow-2xl border-2 border-primary-500 bg-gray-900 scale-105 cursor-grabbing select-none ${
+        isCurrentCover ? 'ring-4 ring-emerald-500' : ''
+      }`}
+    >
+      {isVideo ? (
+        <>
+          <video
+            src={photo.photo_url}
+            className="w-full h-full object-cover pointer-events-none"
+            muted
+            playsInline
+          />
+          <div className="absolute bottom-2 left-2 bg-black/80 backdrop-blur-xs text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
+            <span>▶</span> Video
+          </div>
+        </>
+      ) : (
+        <img
+          src={photo.photo_url}
+          alt={photo.caption || ''}
+          className="w-full h-full object-cover pointer-events-none"
+        />
+      )}
+
+      {isCurrentCover && (
+        <div className="absolute top-2 left-2 z-10">
+          <span className="inline-flex items-center gap-1 bg-emerald-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-md">
+            <CheckCircle2 className="w-3.5 h-3.5" /> Cover
+          </span>
+        </div>
+      )}
+
+      <div className="absolute bottom-2 right-2 z-10 inline-flex items-center gap-1.5 bg-primary-700 text-white text-xs font-semibold px-2.5 py-1 rounded-xl shadow-lg border border-white/20">
+        <span className="text-base leading-none font-bold">⠿</span>
+        <span className="text-[11px] font-medium">Moving</span>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminAlbums() {
   const [albums, setAlbums] = useState<Album[]>([]);
@@ -37,6 +236,21 @@ export default function AdminAlbums() {
   });
   const [savingDetails, setSavingDetails] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // Drag-and-drop state for photos
+  const [activePhotoId, setActivePhotoId] = useState<string | null>(null);
+  const [isReordering, setIsReordering] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Create modal state
   const [showCreate, setShowCreate] = useState(false);
@@ -66,9 +280,11 @@ export default function AdminAlbums() {
       const albumData = await albumsApi.get(albumId);
       if (albumData) {
         const parsed = parseAlbumDescription(albumData.description);
+        const photos = Array.isArray(albumData.photos) ? albumData.photos : [];
+        photos.sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0));
         setEditingAlbum({
           ...albumData,
-          photos: Array.isArray(albumData.photos) ? albumData.photos : [],
+          photos,
         });
         setEditForm({
           home_name: albumData.home_name || '',
@@ -92,13 +308,55 @@ export default function AdminAlbums() {
     try {
       const albumData = await albumsApi.get(albumId);
       if (albumData) {
+        const photos = Array.isArray(albumData.photos) ? albumData.photos : [];
+        photos.sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0));
         setEditingAlbum({
           ...albumData,
-          photos: Array.isArray(albumData.photos) ? albumData.photos : [],
+          photos,
         });
       }
     } catch (err) {
       console.error('Failed to reload editing album:', err);
+    }
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActivePhotoId(event.active.id as string);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActivePhotoId(null);
+
+    if (!over || active.id === over.id || !editingAlbum) return;
+
+    const oldIndex = editingAlbum.photos.findIndex(p => p.id === active.id);
+    const newIndex = editingAlbum.photos.findIndex(p => p.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const previousPhotos = [...editingAlbum.photos];
+    const newPhotos = arrayMove(editingAlbum.photos, oldIndex, newIndex).map((p, idx) => ({
+      ...p,
+      display_order: idx,
+    }));
+
+    // Optimistically update local state immediately
+    setEditingAlbum(prev => (prev ? { ...prev, photos: newPhotos } : null));
+    setIsReordering(true);
+
+    try {
+      await albumsApi.reorderPhotos(
+        editingAlbum.id,
+        newPhotos.map((p, idx) => ({ id: p.id, display_order: idx }))
+      );
+      toast.success('Photo order saved', { id: 'photo-reorder-saved', duration: 1500 });
+    } catch (err) {
+      console.error('Failed to save photo order:', err);
+      toast.error('Failed to save new photo order');
+      setEditingAlbum(prev => (prev ? { ...prev, photos: previousPhotos } : null));
+    } finally {
+      setIsReordering(false);
     }
   };
 
@@ -222,7 +480,13 @@ export default function AdminAlbums() {
 
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('album-photos').getPublicUrl(uploadData.path);
-      await albumsApi.addPhoto(editingAlbum.id, { photo_url: publicUrl, caption: '', media_type: mediaType });
+
+      await albumsApi.addPhoto(editingAlbum.id, {
+        photo_url: publicUrl,
+        caption: '',
+        media_type: mediaType,
+        display_order: editingAlbum.photos?.length || 0,
+      });
       toast.success(isVideo ? 'Video added' : 'Photo added');
       await reloadEditingAlbum(editingAlbum.id);
       loadAlbums();
@@ -251,6 +515,8 @@ export default function AdminAlbums() {
       toast.error('Failed to remove media');
     }
   };
+
+  const activePhoto = editingAlbum?.photos?.find(p => p.id === activePhotoId) || null;
 
   return (
     <AdminLayout>
@@ -418,9 +684,16 @@ export default function AdminAlbums() {
             <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-4">
                 <div>
-                  <h2 className="font-display text-xl font-bold text-gray-800">Photos & Videos</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-display text-xl font-bold text-gray-800">Photos & Videos</h2>
+                    {isReordering && (
+                      <span className="inline-flex items-center gap-1.5 text-xs text-primary-700 bg-primary-50 px-2.5 py-0.5 rounded-full font-medium animate-pulse border border-primary-200">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Saving order...
+                      </span>
+                    )}
+                  </div>
                   <p className="text-gray-500 text-xs sm:text-sm mt-0.5">
-                    Click "Set as Cover" on any photo to choose the primary album cover image.
+                    Drag photos using the <span className="font-bold text-gray-700">⠿</span> handle to reorder them. Changes save automatically. Click "Set as Cover" to choose the album cover.
                   </p>
                 </div>
                 <span className="text-xs font-medium bg-gray-100 text-gray-600 px-3 py-1 rounded-full self-start sm:self-auto">
@@ -468,73 +741,38 @@ export default function AdminAlbums() {
                   <p className="text-xs text-gray-400 mt-1">Upload images or videos above to build the visit gallery.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {editingAlbum.photos.map(photo => {
-                    const isVideo = photo.media_type === 'video' || /\.(mp4|mov|webm|avi)(\?.*)?$/i.test(photo.photo_url);
-                    const isCurrentCover = editingAlbum.cover_photo_url === photo.photo_url;
-
-                    return (
-                      <div
-                        key={photo.id}
-                        className={`group relative aspect-square rounded-2xl overflow-hidden shadow-xs border transition-all ${
-                          isCurrentCover
-                            ? 'ring-3 ring-emerald-500 border-emerald-500 shadow-md'
-                            : 'border-gray-200 hover:shadow-md bg-gray-900'
-                        }`}
-                      >
-                        {/* Media content */}
-                        {isVideo ? (
-                          <>
-                            <video
-                              src={photo.photo_url}
-                              className="w-full h-full object-cover"
-                              preload="metadata"
-                              muted
-                              playsInline
-                            />
-                            <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-xs text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 pointer-events-none">
-                              <span>▶</span> Video
-                            </div>
-                          </>
-                        ) : (
-                          <img
-                            src={photo.photo_url}
-                            alt={photo.caption || ''}
-                            className="w-full h-full object-cover"
-                          />
-                        )}
-
-                        {/* Top-Left: Cover Badge OR Set as Cover Button */}
-                        <div className="absolute top-2 left-2 z-10">
-                          {isCurrentCover ? (
-                            <span className="inline-flex items-center gap-1 bg-emerald-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-md">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Cover
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleSetCover(photo.photo_url)}
-                              className="inline-flex items-center gap-1 bg-black/60 hover:bg-emerald-600 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-xs shadow-md opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                              title="Set as album cover photo"
-                            >
-                              <Check className="w-3 h-3" /> Set as Cover
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Top-Right: Delete Media Button */}
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteMedia(photo.id)}
-                          className="absolute top-2 right-2 z-10 bg-red-600/90 hover:bg-red-600 text-white p-1.5 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                          title="Delete media"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={editingAlbum.photos.map(p => p.id)}
+                    strategy={rectSortingStrategy}
+                  >
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {editingAlbum.photos.map((photo, index) => (
+                        <SortablePhotoCard
+                          key={photo.id}
+                          photo={photo}
+                          index={index}
+                          isCurrentCover={editingAlbum.cover_photo_url === photo.photo_url}
+                          onSetCover={handleSetCover}
+                          onDelete={handleDeleteMedia}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                  <DragOverlay adjustScale={true}>
+                    {activePhoto ? (
+                      <PhotoOverlayCard
+                        photo={activePhoto}
+                        isCurrentCover={editingAlbum.cover_photo_url === activePhoto.photo_url}
+                      />
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
               )}
             </div>
           </div>

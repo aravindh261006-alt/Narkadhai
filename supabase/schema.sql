@@ -44,13 +44,17 @@ create table if not exists public.albums (
 
 -- Album photos / media (images & videos)
 create table if not exists public.album_photos (
-  id         uuid primary key default uuid_generate_v4(),
-  album_id   uuid not null references public.albums(id) on delete cascade,
-  photo_url  text not null,
-  caption    text,
-  media_type text not null default 'image' check (media_type in ('image', 'video')),
-  created_at timestamptz not null default now()
+  id            uuid primary key default uuid_generate_v4(),
+  album_id      uuid not null references public.albums(id) on delete cascade,
+  photo_url     text not null,
+  caption       text,
+  media_type    text not null default 'image' check (media_type in ('image', 'video')),
+  display_order integer not null default 0,
+  created_at    timestamptz not null default now()
 );
+
+-- Migration for existing databases:
+-- ALTER TABLE public.album_photos ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
 
 -- Donations (self-reported by donors)
 create table if not exists public.donations (

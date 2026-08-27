@@ -729,8 +729,30 @@ class TestAdminEndpoints(unittest.TestCase):
 
         albums_table.update.assert_called_once_with({"cover_photo_url": None})
 
+    @patch("app.routers.albums.get_supabase")
+    def test_reorder_photos(self, mock_get_db):
+        """Test that reordering photos updates their display_order."""
+        app.dependency_overrides[require_owner] = mock_owner_admin
+        mock_db = MagicMock()
+        mock_get_db.return_value = mock_db
+
+        album_photos_table = MagicMock()
+        mock_db.table.return_value = album_photos_table
+        album_photos_table.update().eq().eq().execute.return_value.data = [{"id": "p1", "display_order": 0}]
+
+        payload = {
+            "photos": [
+                {"photo_id": "p1", "display_order": 0},
+                {"photo_id": "p2", "display_order": 1},
+            ]
+        }
+        resp = client.put("/api/albums/alb-1/photos/reorder", json=payload)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["status"], "ok")
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
 

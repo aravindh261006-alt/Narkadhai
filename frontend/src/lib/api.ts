@@ -102,7 +102,12 @@ export const albumsApi = {
   get: async (id: string) => {
     try {
       const res = await api.get(`/albums/${id}`);
-      if (res.data && typeof res.data === 'object') return res.data;
+      if (res.data && typeof res.data === 'object') {
+        if (Array.isArray(res.data.photos)) {
+          res.data.photos.sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0));
+        }
+        return res.data;
+      }
     } catch (e) {
       console.warn(`Backend album ${id} failed, trying Supabase directly`, e);
     }
@@ -110,8 +115,21 @@ export const albumsApi = {
       try {
         const { data: album } = await supabase.from('albums').select('*').eq('id', id).single();
         if (album) {
-          const { data: photos } = await supabase.from('album_photos').select('*').eq('album_id', id);
-          return { ...album, photos: photos || [] };
+          let photos: any[] = [];
+          try {
+            const { data } = await supabase
+              .from('album_photos')
+              .select('*')
+              .eq('album_id', id)
+              .order('display_order', { ascending: true })
+              .order('created_at', { ascending: true });
+            photos = data || [];
+          } catch {
+            const { data } = await supabase.from('album_photos').select('*').eq('album_id', id);
+            photos = data || [];
+          }
+          photos.sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0));
+          return { ...album, photos };
         }
       } catch {}
     }
@@ -121,6 +139,24 @@ export const albumsApi = {
   update: (id: string, data: object) => api.put(`/albums/${id}`, data).then(r => r.data),
   delete: (id: string) => api.delete(`/albums/${id}`),
   addPhoto: (albumId: string, data: object) => api.post(`/albums/${albumId}/photos`, data).then(r => r.data),
+  reorderPhotos: async (albumId: string, orderedPhotos: { id: string; display_order: number }[]) => {
+    try {
+      return await api.put(`/albums/${albumId}/photos/reorder`, {
+        photos: orderedPhotos.map(p => ({ photo_id: p.id, display_order: p.display_order })),
+      });
+    } catch (err) {
+      if (isSupabaseConfigured) {
+        console.warn('Backend reorderPhotos failed, attempting direct Supabase update', err);
+        await Promise.all(
+          orderedPhotos.map(p =>
+            supabase.from('album_photos').update({ display_order: p.display_order }).eq('id', p.id)
+          )
+        );
+        return;
+      }
+      throw err;
+    }
+  },
   deletePhoto: async (albumId: string, photoId: string) => {
     try {
       return await api.delete(`/albums/${albumId}/photos/${photoId}`);
