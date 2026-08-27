@@ -197,9 +197,21 @@ export default function AdminAlbums() {
                 {/* Parsed description details */}
                 {(() => {
                   const parsed = parseDescription(selected.description);
+                  const isLocUrl = parsed.location && /^https?:\/\//i.test(parsed.location.trim());
+                  const locMapUrl = parsed.location
+                    ? (isLocUrl ? parsed.location.trim() : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parsed.location.trim()).replace(/%20/g, '+')}`)
+                    : '';
                   return (
-                    <div className="mb-4 text-xs bg-gray-50 p-4 rounded-xl space-y-1">
-                      {parsed.location && <p className="text-gray-600">📍 <strong>Location:</strong> {parsed.location}</p>}
+                    <div className="mb-4 text-xs bg-gray-50 p-4 rounded-xl space-y-1.5">
+                      {parsed.location && (
+                        <p className="text-gray-600 flex items-center gap-1.5 flex-wrap">
+                          <span>📍 <strong>Location:</strong></span>
+                          {!isLocUrl && <span>{parsed.location} ·</span>}
+                          <a href={locMapUrl} target="_blank" rel="noopener noreferrer" className="text-primary-700 hover:text-primary-900 hover:underline font-semibold inline-flex items-center gap-0.5">
+                            Open in Google Maps →
+                          </a>
+                        </p>
+                      )}
                       {parsed.contact && <p className="text-gray-600">📞 <strong>Contact:</strong> {parsed.contact}</p>}
                       {parsed.description && <p className="text-gray-700 mt-2 leading-relaxed whitespace-pre-line">{parsed.description}</p>}
                     </div>

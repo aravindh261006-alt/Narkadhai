@@ -74,6 +74,12 @@ export default function AlbumDetailPage() {
 
   const { location, contact, cleanDescription } = parseAlbumInfo(album.description);
   const cleanPhone = contact ? contact.replace(/[^0-9+]/g, '') : '';
+  const isLocationUrl = location ? /^https?:\/\//i.test(location.trim()) : false;
+  const locationMapUrl = location
+    ? (isLocationUrl
+        ? location.trim()
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.trim()).replace(/%20/g, '+')}`)
+    : '';
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 animate-[slide-up_0.6s_ease-out]">
@@ -112,7 +118,7 @@ export default function AlbumDetailPage() {
 
           {location && (
             <a
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`}
+              href={locationMapUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="group flex items-center gap-4 bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-5 rounded-2xl shadow-md hover:shadow-xl hover:scale-[1.02] transition-all border border-blue-500/30"
@@ -121,12 +127,16 @@ export default function AlbumDetailPage() {
                 <MapPin className="w-6 h-6 text-white" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-blue-200 mb-0.5">Location</p>
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-blue-200">Location</p>
                   <ExternalLink className="w-3.5 h-3.5 text-blue-200" />
                 </div>
-                <p className="text-lg md:text-xl font-bold tracking-tight truncate">{location}</p>
-                <p className="text-xs text-blue-200 font-medium group-hover:underline">Open in Google Maps →</p>
+                {!isLocationUrl && (
+                  <p className="text-lg md:text-xl font-bold tracking-tight truncate mb-0.5">{location}</p>
+                )}
+                <p className={`${isLocationUrl ? 'text-lg md:text-xl font-bold tracking-tight text-white' : 'text-xs text-blue-200'} font-medium group-hover:underline flex items-center gap-1`}>
+                  Open in Google Maps →
+                </p>
               </div>
             </a>
           )}
