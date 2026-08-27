@@ -10,7 +10,11 @@ export default function MembersPage() {
 
   useEffect(() => {
     membersApi.list()
-      .then(res => setMembers(Array.isArray(res) ? res : []))
+      .then(res => {
+        const list = Array.isArray(res) ? res : [];
+        list.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+        setMembers(list);
+      })
       .catch(() => setMembers([]))
       .finally(() => setLoading(false));
   }, []);
