@@ -244,41 +244,86 @@ export default function AdminAlbums() {
 
       {/* Create album modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
-            <h3 className="font-display text-xl font-bold mb-4">New Album</h3>
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto" onClick={() => setShowCreate(false)}>
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 w-full max-w-2xl shadow-2xl animate-[slide-up_0.25s_ease-out] my-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Home Name *</label>
-                <input value={newAlbum.home_name} onChange={e => setNewAlbum(p => ({ ...p, home_name: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm" placeholder="Name of the home visited" />
+                <h3 className="font-display text-2xl font-bold text-gray-800">New Album</h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Record a new home visit and add photo memories</p>
               </div>
+              <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-100 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-5 max-h-[72vh] overflow-y-auto pr-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Visit Date *</label>
-                <input type="date" value={newAlbum.visit_date} onChange={e => setNewAlbum(p => ({ ...p, visit_date: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm" />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Home Name *</label>
+                <input
+                  value={newAlbum.home_name}
+                  onChange={e => setNewAlbum(p => ({ ...p, home_name: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 transition-shadow"
+                  placeholder="e.g. Annai Orphanage & Old Age Home"
+                />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                <input value={newAlbum.location} onChange={e => setNewAlbum(p => ({ ...p, location: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm" placeholder="e.g. Chennai, Tamil Nadu" />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Visit Date *</label>
+                  <input
+                    type="date"
+                    value={newAlbum.visit_date}
+                    onChange={e => setNewAlbum(p => ({ ...p, visit_date: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 transition-shadow"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Location</label>
+                  <input
+                    value={newAlbum.location}
+                    onChange={e => setNewAlbum(p => ({ ...p, location: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 transition-shadow"
+                    placeholder="e.g. Tambaram, Chennai"
+                  />
+                </div>
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
-                <input value={newAlbum.contact_number} onChange={e => setNewAlbum(p => ({ ...p, contact_number: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm" placeholder="e.g. +91 98765 43210" />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Contact Number</label>
+                <input
+                  value={newAlbum.contact_number}
+                  onChange={e => setNewAlbum(p => ({ ...p, contact_number: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 transition-shadow"
+                  placeholder="e.g. +91 98765 43210"
+                />
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea rows={3} value={newAlbum.description} onChange={e => setNewAlbum(p => ({ ...p, description: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm resize-none" placeholder="Brief description of the visit" />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+                <textarea
+                  rows={5}
+                  value={newAlbum.description}
+                  onChange={e => setNewAlbum(p => ({ ...p, description: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 leading-relaxed transition-shadow"
+                  placeholder="Write a detailed description of the visit, needs identified, interactions with the residents, and items distributed..."
+                />
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={handleCreate} disabled={creating} className="flex-1 bg-primary-700 text-white py-3 rounded-xl font-medium text-sm hover:bg-primary-800 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+
+            <div className="flex items-center justify-end gap-3 mt-7 pt-4 border-t border-gray-100">
+              <button
+                onClick={() => setShowCreate(false)}
+                className="px-5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreate}
+                disabled={creating}
+                className="bg-primary-700 text-white px-6 py-2.5 rounded-xl font-medium text-sm hover:bg-primary-800 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm"
+              >
                 {creating ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating...</> : 'Create Album'}
               </button>
-              <button onClick={() => setShowCreate(false)} className="px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
             </div>
           </div>
         </div>
@@ -286,41 +331,86 @@ export default function AdminAlbums() {
 
       {/* Edit album modal */}
       {showEdit && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowEdit(false)}>
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
-            <h3 className="font-display text-xl font-bold mb-4">Edit Album Details</h3>
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto" onClick={() => setShowEdit(false)}>
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 w-full max-w-2xl shadow-2xl animate-[slide-up_0.25s_ease-out] my-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Home Name *</label>
-                <input value={editAlbum.home_name} onChange={e => setEditAlbum(p => ({ ...p, home_name: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm" placeholder="Name of the home visited" />
+                <h3 className="font-display text-2xl font-bold text-gray-800">Edit Album Details</h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Update visit information and contact details</p>
               </div>
+              <button onClick={() => setShowEdit(false)} className="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-100 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-5 max-h-[72vh] overflow-y-auto pr-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Visit Date *</label>
-                <input type="date" value={editAlbum.visit_date} onChange={e => setEditAlbum(p => ({ ...p, visit_date: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm" />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Home Name *</label>
+                <input
+                  value={editAlbum.home_name}
+                  onChange={e => setEditAlbum(p => ({ ...p, home_name: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 transition-shadow"
+                  placeholder="Name of the home visited"
+                />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                <input value={editAlbum.location} onChange={e => setEditAlbum(p => ({ ...p, location: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm" placeholder="e.g. Chennai, Tamil Nadu" />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Visit Date *</label>
+                  <input
+                    type="date"
+                    value={editAlbum.visit_date}
+                    onChange={e => setEditAlbum(p => ({ ...p, visit_date: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 transition-shadow"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Location</label>
+                  <input
+                    value={editAlbum.location}
+                    onChange={e => setEditAlbum(p => ({ ...p, location: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 transition-shadow"
+                    placeholder="e.g. Chennai, Tamil Nadu"
+                  />
+                </div>
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
-                <input value={editAlbum.contact_number} onChange={e => setEditAlbum(p => ({ ...p, contact_number: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm" placeholder="e.g. +91 98765 43210" />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Contact Number</label>
+                <input
+                  value={editAlbum.contact_number}
+                  onChange={e => setEditAlbum(p => ({ ...p, contact_number: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 transition-shadow"
+                  placeholder="e.g. +91 98765 43210"
+                />
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea rows={3} value={editAlbum.description} onChange={e => setEditAlbum(p => ({ ...p, description: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm resize-none" placeholder="Brief description of the visit" />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+                <textarea
+                  rows={5}
+                  value={editAlbum.description}
+                  onChange={e => setEditAlbum(p => ({ ...p, description: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 leading-relaxed transition-shadow"
+                  placeholder="Brief description of the visit..."
+                />
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={handleEdit} disabled={savingDetails} className="flex-1 bg-primary-700 text-white py-3 rounded-xl font-medium text-sm hover:bg-primary-800 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+
+            <div className="flex items-center justify-end gap-3 mt-7 pt-4 border-t border-gray-100">
+              <button
+                onClick={() => setShowEdit(false)}
+                className="px-5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEdit}
+                disabled={savingDetails}
+                className="bg-primary-700 text-white px-6 py-2.5 rounded-xl font-medium text-sm hover:bg-primary-800 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm"
+              >
                 {savingDetails ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : 'Save Changes'}
               </button>
-              <button onClick={() => setShowEdit(false)} className="px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
             </div>
           </div>
         </div>
