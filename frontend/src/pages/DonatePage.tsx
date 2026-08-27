@@ -199,7 +199,7 @@ export default function DonatePage() {
                     max: { value: 1000000, message: 'Maximum per submission is ₹10,00,000. Contact us for larger contributions.' },
                     validate: v => Number.isInteger(Number(v)) || 'Please enter a whole rupee amount (no paise)',
                   })}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   placeholder="e.g. 500"
                 />
                 {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount.message}</p>}
