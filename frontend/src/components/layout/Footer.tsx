@@ -35,7 +35,11 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Brand */}
           <div>
-            <Link to="/" className="flex items-center gap-2 mb-4 group w-fit">
+            <Link
+              to="/"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="flex items-center gap-2 mb-4 group w-fit"
+            >
               <div className="w-8 h-8 rounded-full bg-primary-700 border border-amber-400/30 flex items-center justify-center group-hover:scale-105 transition-transform">
                 <Heart className="w-4 h-4 text-amber-400 fill-amber-400" />
               </div>
@@ -56,6 +60,7 @@ export default function Footer() {
                   <li key={link.to}>
                     <Link
                       to={link.to}
+                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                       className={`inline-block px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                         active
                           ? 'bg-primary-100 text-primary-800 font-semibold shadow-sm'

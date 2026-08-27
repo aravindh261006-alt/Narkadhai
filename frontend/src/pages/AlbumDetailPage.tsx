@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Camera, PhoneCall, MapPin, ExternalLink, Calendar } from 'lucide-react';
 import Lightbox from 'yet-another-react-lightbox';
 import Video from 'yet-another-react-lightbox/plugins/video';
@@ -39,13 +39,40 @@ const parseAlbumInfo = (desc: string | null) => {
 
 export default function AlbumDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [album, setAlbum] = useState<AlbumWithPhotos | null>(null);
   const [loading, setLoading] = useState(true);
   const [lightboxIndex, setLightboxIndex] = useState<number>(-1);
+  const lightboxIndexRef = useRef(lightboxIndex);
+  lightboxIndexRef.current = lightboxIndex;
 
   useEffect(() => {
     if (id) albumsApi.get(id).then(setAlbum).catch(() => {}).finally(() => setLoading(false));
   }, [id]);
+
+  // Handle browser back button and lightbox close behavior
+  useEffect(() => {
+    // Push an album detail state entry into browser history so browser back navigates to /albums
+    window.history.pushState({ albumDetail: true }, '');
+
+    const handlePopState = () => {
+      // If lightbox is currently open, close it and stay on this album page
+      if (lightboxIndexRef.current >= 0) {
+        setLightboxIndex(-1);
+        // Push state back so next back navigation goes to /albums
+        window.history.pushState({ albumDetail: true }, '');
+        return;
+      }
+
+      // When user clicks browser back button from album detail page, always return to /albums
+      navigate('/albums', { replace: true });
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [id, navigate]);
 
   const sortedPhotos = useMemo(() => {
     if (!album?.photos || !Array.isArray(album.photos)) return [];
