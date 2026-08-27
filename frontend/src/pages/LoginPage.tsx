@@ -41,8 +41,16 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps = {}) {
       }
 
       if (mode === 'magic') {
+        const cleanEmail = email.trim().toLowerCase();
+        // Verify email exists in authorized_admins table before dispatching magic link
+        const check = await adminApi.checkAuthorized(cleanEmail);
+        if (!check.authorized) {
+          toast.error('This email is not authorized as an admin. Please contact the owner.');
+          return;
+        }
+
         const { error } = await supabase.auth.signInWithOtp({
-          email,
+          email: cleanEmail,
           options: {
             emailRedirectTo: `${window.location.origin}/admin`,
           },
@@ -52,20 +60,19 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps = {}) {
         return;
       }
 
-      const authResult = await supabase.auth.signInWithPassword({ email, password });
+      const authResult = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (authResult.error) throw authResult.error;
 
       // Verify against authorized_admins via backend
       try {
-        await adminApi.dashboard(); // This call will 403 if not in authorized_admins
+        await adminApi.verifyAccess();
       } catch (apiErr: any) {
         if (apiErr?.response?.status === 403) {
           // Sign out the Supabase session immediately
           await supabase.auth.signOut();
-          toast.error('This account is not authorized to access the admin area.');
+          toast.error('Access Denied - You are not authorized to access this area');
           return;
         }
-        // Other errors (network/backend offline etc.) — still let through, will be caught in AdminRoute
       }
 
       toast.success('Welcome back!');

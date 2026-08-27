@@ -87,14 +87,14 @@ export default function AdminAccess() {
       const resp = await adminApi.addAdmin(form);
       if (resp.warning) {
         setWarningMessage(resp.warning);
-        toast.success('Admin added (but email not sent)');
+        toast.success('Admin added with default password: Narkadhai@2024');
       } else {
-        toast.success('Admin invited successfully!');
+        toast.success('Admin added! Welcome email sent with login credentials.');
         setForm({ email: '', role: 'audit' });
       }
       await refreshAdmins();
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Failed to invite admin');
+      toast.error(err?.response?.data?.detail || 'Failed to add admin');
     } finally {
       if (isMounted.current) setInviting(false);
     }
@@ -120,7 +120,7 @@ export default function AdminAccess() {
       <div className="p-8">
         <div className="mb-8">
           <h1 className="font-display text-3xl font-bold text-gray-800">Admin Access</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage team roles and invite new admins.</p>
+          <p className="text-gray-500 text-sm mt-1">Manage team roles and add new admins.</p>
         </div>
 
         {loading ? (
@@ -146,12 +146,12 @@ export default function AdminAccess() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Invite form */}
+            {/* Add admin form */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
                   <ShieldCheck className="w-5 h-5 text-primary-600" />
-                  <h3 className="font-semibold text-gray-800">Invite Admin</h3>
+                  <h3 className="font-semibold text-gray-800">Add New Admin</h3>
                 </div>
 
                 <form onSubmit={handleInvite} className="space-y-4">
@@ -179,22 +179,31 @@ export default function AdminAccess() {
                     </select>
                   </div>
 
+                  <div className="p-3 bg-primary-50/60 rounded-xl border border-primary-100 text-xs text-primary-900 space-y-1">
+                    <p className="font-semibold flex items-center gap-1.5 text-primary-800">
+                      <span>🔑</span> Default Credentials:
+                    </p>
+                    <p className="text-primary-700">
+                      Account will be provisioned automatically with default password: <strong>Narkadhai@2024</strong>. A welcome email with login instructions will be sent.
+                    </p>
+                  </div>
+
                   <button
                     type="submit"
                     disabled={inviting}
                     className="w-full bg-primary-700 hover:bg-primary-800 text-white py-3 rounded-xl font-medium text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {inviting ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /> Inviting...</>
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Adding Admin...</>
                     ) : (
-                      <><Plus className="w-4 h-4" /> Invite Admin</>
+                      <><Plus className="w-4 h-4" /> Add Admin</>
                     )}
                   </button>
                 </form>
 
                 {warningMessage && (
                   <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 leading-relaxed">
-                    <p className="font-semibold text-amber-900 mb-1">⚠️ Invitation Details:</p>
+                    <p className="font-semibold text-amber-900 mb-1">⚠️ Status Note:</p>
                     <p className="break-all">{warningMessage}</p>
                   </div>
                 )}

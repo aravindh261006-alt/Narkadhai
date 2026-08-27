@@ -323,6 +323,130 @@ class TestAdminEndpoints(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["ok"], True)
 
+    @patch("app.services.email_service.send_admin_welcome_email", return_value=True)
+    @patch("app.routers.admin.get_supabase", return_value=mock_supabase)
+    def test_add_admin_creates_auth_user_with_default_password(self, mock_get_db, mock_send_welcome):
+        """Test that adding an admin creates the Supabase Auth user with default password Narkadhai@2024 and sends welcome email."""
+        app.dependency_overrides[require_owner] = mock_owner_admin
+
+        # Mock no existing admin in table
+        mock_supabase.table().select().eq().execute.return_value.data = []
+        # Mock auth.users list (no existing user)
+        mock_supabase.auth.admin.list_users.return_value = []
+        # Mock auth create_user
+        mock_supabase.auth.admin.create_user.return_value = MagicMock(id="new-u-1")
+        # Mock table insert
+        mock_supabase.table().insert().execute.return_value.data = [
+            {"id": "a-123", "email": "newadmin@example.com", "name": "newadmin", "role": "audit"}
+        ]
+
+        resp = client.post(
+            "/api/admin/admins",
+            json={"email": "newadmin@example.com", "role": "audit"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["email"], "newadmin@example.com")
+        self.assertEqual(data["role"], "audit")
+
+        # Verify auth user was created with default password Narkadhai@2024 and email_confirm=True
+        mock_supabase.auth.admin.create_user.assert_called_once_with({
+            "email": "newadmin@example.com",
+            "password": "Narkadhai@2024",
+            "email_confirm": True,
+            "user_metadata": {"name": "newadmin", "role": "audit"},
+        })
+
+        # Verify welcome email was sent with credentials
+        mock_send_welcome.assert_called_once_with(
+            admin_email="newadmin@example.com",
+            default_password="Narkadhai@2024",
+            role="audit",
+        )
+
+    @patch("app.routers.admin.get_supabase", return_value=mock_supabase)
+    def test_check_authorized_endpoint(self, mock_get_db):
+        """Test public check-authorized endpoint for magic link security."""
+        # 1. Authorized email
+        mock_supabase.table().select().ilike().execute.return_value.data = [
+            {"id": "a1", "email": "authorized@narkadhai.org", "role": "audit"}
+        ]
+        resp = client.post(
+            "/api/admin/check-authorized",
+            json={"email": "authorized@narkadhai.org"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["authorized"], True)
+
+        # 2. Unauthorized email
+        mock_supabase.table().select().ilike().execute.return_value.data = []
+        resp_unauth = client.post(
+            "/api/admin/check-authorized",
+            json={"email": "hacker@example.com"},
+        )
+        self.assertEqual(resp_unauth.status_code, 200)
+        self.assertEqual(resp_unauth.json()["authorized"], False)
+
+    def test_verify_access_authorized(self):
+        """Test verify-access returns admin info when authorized."""
+        app.dependency_overrides[require_audit_or_owner] = mock_owner_admin
+        resp = client.get("/api/admin/verify-access")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["ok"], True)
+        self.assertEqual(resp.json()["email"], "support.narkadhai@gmail.com")
+
+    @patch("app.services.auth_service.get_supabase")
+    def test_unauthorized_access_raises_access_denied_message(self, mock_get_db):
+        """Test that unauthorized account receives exact 'Access Denied - You are not authorized to access this area' error."""
+        from app.services.auth_service import get_current_admin
+        from fastapi import HTTPException
+        from fastapi.security import HTTPAuthorizationCredentials
+
+        mock_db = MagicMock()
+        mock_get_db.return_value = mock_db
+
+        mock_user = MagicMock()
+        mock_user.id = "stranger-123"
+        mock_user.email = "stranger@example.com"
+        mock_user.user_metadata = {}
+        mock_user.app_metadata = {}
+        mock_db.auth.get_user.return_value.user = mock_user
+
+        # User is NOT in authorized_admins table
+        mock_db.table().select().ilike().execute.return_value.data = []
+
+        import asyncio
+        creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="mock-token-stranger")
+        with self.assertRaises(HTTPException) as ctx:
+            asyncio.run(get_current_admin(creds))
+
+        self.assertEqual(ctx.exception.status_code, 403)
+        self.assertEqual(ctx.exception.detail, "Access Denied - You are not authorized to access this area")
+
+    @patch("app.services.email_service.get_email_service")
+    def test_send_admin_welcome_email_content(self, mock_get_svc):
+        """Test that welcome email contains all required details."""
+        from app.services.email_service import send_admin_welcome_email
+        mock_svc = MagicMock()
+        mock_get_svc.return_value = mock_svc
+
+        success = send_admin_welcome_email(
+            admin_email="testadmin@example.com",
+            default_password="Narkadhai@2024",
+            role="audit",
+        )
+        self.assertTrue(success)
+        mock_svc.send.assert_called_once()
+        kwargs = mock_svc.send.call_args[1]
+        self.assertEqual(kwargs["to"], "testadmin@example.com")
+        self.assertIn("You have been added as an admin for Narkadhai", kwargs["subject"])
+        html = kwargs["html"]
+        self.assertIn("You have been added as an admin for Narkadhai.", html)
+        self.assertIn("https://narkadhai.vercel.app/admin", html)
+        self.assertIn("testadmin@example.com", html)
+        self.assertIn("Narkadhai@2024", html)
+        self.assertIn("Please change your password after first login.", html)
+
     @patch("app.services.auth_service.get_supabase")
     def test_auth_fallback_with_mock_user(self, mock_get_db):
         """Test that auth_service falls back to supabase.auth.get_user when JWT decode is not used."""

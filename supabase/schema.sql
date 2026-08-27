@@ -200,6 +200,24 @@ grant execute on function public.get_donation_totals() to anon;
 grant execute on function public.get_donation_totals() to authenticated;
 
 -- ============================================================
+-- HELPER FUNCTION — CHECK IF EMAIL IS AUTHORIZED ADMIN
+-- Returns boolean only; protects admin roster from enumeration
+-- ============================================================
+create or replace function public.is_admin_authorized(check_email text)
+returns boolean
+language sql
+security definer
+as $$
+  select exists(
+    select 1 from public.authorized_admins
+    where lower(email) = lower(trim(check_email))
+  );
+$$;
+
+grant execute on function public.is_admin_authorized(text) to anon;
+grant execute on function public.is_admin_authorized(text) to authenticated;
+
+-- ============================================================
 -- STORAGE BUCKETS
 -- Create these manually in the Supabase dashboard → Storage,
 -- or run via Supabase SQL Editor.

@@ -161,6 +161,24 @@ export const adminApi = {
   addAdmin: (data: object) => api.post('/admin/admins', data).then(r => r.data),
   removeAdmin: (id: string) => api.delete(`/admin/admins/${id}`),
   me: () => api.get('/admin/me').then(r => r.data),
+  verifyAccess: () => api.get('/admin/verify-access').then(r => r.data),
+  checkAuthorized: async (email: string): Promise<{ authorized: boolean; role?: string }> => {
+    try {
+      const res = await api.post('/admin/check-authorized', { email });
+      return res.data;
+    } catch (e) {
+      console.warn('Backend check-authorized call failed, attempting Supabase fallback if available', e);
+      if (isSupabaseConfigured) {
+        try {
+          const { data, error } = await supabase.rpc('is_admin_authorized', { check_email: email });
+          if (!error && typeof data === 'boolean') {
+            return { authorized: data };
+          }
+        } catch {}
+      }
+      return { authorized: false };
+    }
+  },
   changeEmail: (new_email: string) => api.post('/admin/change-email', { new_email }).then(r => r.data),
   changePassword: (new_password: string) => api.post('/admin/change-password', { new_password }).then(r => r.data),
 };

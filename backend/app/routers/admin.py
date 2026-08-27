@@ -97,6 +97,32 @@ async def get_dashboard(
         }
 
 
+class CheckAuthorizedPayload(BaseModel):
+    email: str
+
+
+@router.post("/check-authorized")
+async def check_admin_authorized(payload: CheckAuthorizedPayload):
+    """Check if an email is in authorized_admins table before sending magic links."""
+    email_val = payload.email.strip().lower()
+    if not email_val or not re.match(r"[^@]+@[^@]+\.[^@]+", email_val):
+        return {"authorized": False}
+
+    db = get_supabase()
+    resp = db.table("authorized_admins").select("id, role").ilike("email", email_val).execute()
+    if resp.data and len(resp.data) > 0:
+        return {"authorized": True, "role": resp.data[0].get("role", "audit")}
+    return {"authorized": False}
+
+
+@router.get("/verify-access")
+async def verify_admin_access(
+    admin: Annotated[AdminUser, Depends(require_audit_or_owner)],
+):
+    """Verify current caller has active admin access. Rejects non-admins with 403."""
+    return {"ok": True, "email": admin.email, "name": admin.name, "role": admin.role}
+
+
 @router.get("/me")
 async def get_me(
     admin: Annotated[AdminUser, Depends(require_audit_or_owner)],
@@ -141,7 +167,7 @@ async def add_admin(
     payload: dict,
     admin: Annotated[AdminUser, Depends(require_owner)],
 ):
-    """Owner only: add an authorized admin and trigger invite email."""
+    """Owner only: add an authorized admin, automatically provision auth user with default password, and send welcome email."""
     email_val = payload.get("email", "").strip().lower()
     role_val = payload.get("role", "audit").strip().lower()
 
@@ -162,24 +188,45 @@ async def add_admin(
         raise HTTPException(status_code=400, detail="Admin email is already authorized.")
 
     name_val = email_val.split("@")[0]
+    default_password = "Narkadhai@2024"
 
-    # Pre-emptively search and delete any existing auth user in auth.users by email to allow re-invite
-    existing_auth_id = None
+    # Automatically create or update Supabase Auth user with default password
+    auth_user_id = None
     try:
         users = db.auth.admin.list_users()
         for u in users:
             if u.email and u.email.lower().strip() == email_val:
-                existing_auth_id = u.id
+                auth_user_id = u.id
                 break
     except Exception as e:
         logger.warning("Failed to list users to check existence: %s", e)
 
-    if existing_auth_id:
+    if auth_user_id:
         try:
-            db.auth.admin.delete_user(existing_auth_id)
-            logger.info("Deleted existing auth user record for %s to clear way for re-invite", email_val)
+            db.auth.admin.update_user_by_id(
+                auth_user_id,
+                {
+                    "password": default_password,
+                    "email_confirm": True,
+                    "user_metadata": {"name": name_val, "role": role_val},
+                }
+            )
+            logger.info("Updated existing auth user %s with default password", email_val)
         except Exception as e:
-            logger.error("Failed to delete existing auth user %s: %s", email_val, e)
+            logger.error("Failed to update existing auth user %s: %s", email_val, e)
+            raise HTTPException(status_code=500, detail=f"Failed to update auth user credentials: {e}")
+    else:
+        try:
+            db.auth.admin.create_user({
+                "email": email_val,
+                "password": default_password,
+                "email_confirm": True,
+                "user_metadata": {"name": name_val, "role": role_val},
+            })
+            logger.info("Created Supabase Auth user for %s with default password", email_val)
+        except Exception as e:
+            logger.error("Failed to create Supabase Auth user for %s: %s", email_val, e)
+            raise HTTPException(status_code=500, detail=f"Failed to create auth user: {e}")
 
     # 1. Insert into authorized_admins table
     resp = db.table("authorized_admins").insert({
@@ -191,54 +238,18 @@ async def add_admin(
     if not resp.data:
         raise HTTPException(status_code=500, detail="Failed to authorize admin in database.")
 
-    # 2. Call generate_link to generate the Supabase invitation link
-    invite_link = None
-    try:
-        frontend_base = cfg.FRONTEND_URL.split(",")[0].strip().rstrip("/")
-        redirect_url = f"{frontend_base}/reset-password"
-        link_res = db.auth.admin.generate_link({
-            "type": "invite",
-            "email": email_val,
-            "options": {"redirect_to": redirect_url}
-        })
-        invite_link = link_res.properties.action_link
-    except Exception as e:
-        logger.error("Failed to generate invite link for %s: %s", email_val, e)
-        # Rollback db insertion to keep consistency
-        db.table("authorized_admins").delete().eq("email", email_val).execute()
-        raise HTTPException(status_code=500, detail=f"Failed to generate Supabase invite: {e}")
+    # 2. Send welcome email with login credentials
+    email_sent = email.send_admin_welcome_email(
+        admin_email=email_val,
+        default_password=default_password,
+        role=role_val,
+    )
 
-    # 3. Send email via email service
-    if invite_link:
-        email_svc = email.get_email_service()
-        subject = "Invitation to join Narkadhai Admin"
-        html_body = f"""
-        <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:16px;background-color:#FAF7F2;">
-          <h2 style="color:#1A4D3A;text-align:center;font-family:Georgia,serif;margin-bottom:20px;">Welcome to Narkadhai</h2>
-          <p style="font-size:15px;color:#0D1F17;line-height:1.6;">You have been invited to join the Narkadhai admin area with the role of <strong>{role_val}</strong>.</p>
-          <p style="font-size:15px;color:#0D1F17;line-height:1.6;">Please click the button below to set your password and access the admin dashboard:</p>
-          <div style="text-align:center;margin:32px 0;">
-            <a href="{invite_link}" style="background-color:#1A4D3A;color:#ffffff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:15px;display:inline-block;box-shadow:0 4px 6px rgba(26,77,58,0.15);">Set Password & Accept Invite</a>
-          </div>
-          <p style="color:#666;font-size:12px;margin-top:24px;">If the button above does not work, copy and paste this URL into your browser:</p>
-          <p style="color:#1A7D47;font-size:12px;word-break:break-all;"><a href="{invite_link}" style="color:#1A7D47;">{invite_link}</a></p>
-          <hr style="border:none;border-top:1px solid #e2e8f0;margin:32px 0;">
-          <p style="color:#888;font-size:11px;text-align:center;">This is a secure transactional email from Narkadhai. Link will expire in 24 hours.</p>
-        </div>
-        """
-        try:
-            email_svc.send(to=email_val, subject=subject, html=html_body)
-        except Exception as e:
-            logger.error("Failed to send invite email to %s: %s", email_val, e)
-            return {
-                "id": resp.data[0]["id"],
-                "email": resp.data[0]["email"],
-                "name": resp.data[0]["name"],
-                "role": resp.data[0]["role"],
-                "warning": "Admin authorized but invitation email could not be sent. Link: " + invite_link
-            }
+    result = dict(resp.data[0])
+    if not email_sent:
+        result["warning"] = "Admin account created with default password, but welcome email could not be sent."
 
-    return resp.data[0]
+    return result
 
 
 @router.delete("/admins/{admin_id}")

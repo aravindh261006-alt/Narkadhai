@@ -113,7 +113,7 @@ async def get_current_admin(
     if not record:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"The account '{email}' is not on the authorized admins list.",
+            detail="Access Denied - You are not authorized to access this area",
         )
 
     return AdminUser(email=record["email"], name=record["name"], role=record["role"])

@@ -190,6 +190,17 @@ export default function AdminProfile() {
               <Lock className="w-5 h-5 text-primary-600" />
               <h3 className="font-semibold text-gray-800">Change Password</h3>
             </div>
+
+            <div className="mb-4 p-3.5 bg-amber-50/80 border border-amber-200/80 rounded-xl text-xs text-amber-900 leading-relaxed flex items-start gap-2.5">
+              <span className="text-base leading-none mt-0.5">🛡️</span>
+              <div>
+                <p className="font-semibold text-amber-950">First-time login notice</p>
+                <p className="mt-0.5 text-amber-900">
+                  If you logged in using the default password (<strong>Narkadhai@2024</strong>), please set your own private password below to secure your admin access.
+                </p>
+              </div>
+            </div>
+
             <p className="text-xs text-gray-500 mb-5 leading-relaxed">
               Choose a strong password with at least 6 characters to secure your admin account.
             </p>

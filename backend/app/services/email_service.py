@@ -267,6 +267,58 @@ def send_contact_notification(
         logger.error("Failed to send contact notification: %s", e)
 
 
+def send_admin_welcome_email(
+    *,
+    admin_email: str,
+    default_password: str = "Narkadhai@2024",
+    role: str = "audit",
+) -> bool:
+    """Send welcome email to newly added admin with their login credentials."""
+    svc = get_email_service()
+    login_url = "https://narkadhai.vercel.app/admin"
+    subject = "You have been added as an admin for Narkadhai"
+    html = f"""
+    <div style="font-family:'Segoe UI',Roboto,Helvetica,sans-serif;max-width:600px;margin:auto;padding:32px;background:#FAF7F2;border-radius:16px;border:1px solid #e7e0d6;color:#1e293b;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="color:#1A4D3A;margin:0 0 8px;font-size:26px;">Welcome to Narkadhai Admin</h1>
+        <p style="color:#334155;font-size:16px;margin:0;font-weight:500;">You have been added as an admin for Narkadhai.</p>
+      </div>
+
+      <div style="background:#ffffff;padding:24px;border-radius:12px;border:1px solid #e2e8f0;margin:24px 0;">
+        <p style="margin:8px 0;font-size:15px;"><strong>Login at:</strong> <a href="{login_url}" style="color:#1A4D3A;font-weight:600;text-decoration:underline;">{login_url}</a></p>
+        <p style="margin:8px 0;font-size:15px;"><strong>Email:</strong> {admin_email}</p>
+        <p style="margin:8px 0;font-size:15px;"><strong>Default Password:</strong> <code style="background:#f1f5f9;padding:4px 8px;border-radius:6px;font-size:15px;color:#0f172a;font-weight:bold;">{default_password}</code></p>
+        <p style="margin:8px 0;font-size:15px;"><strong>Role:</strong> {role.capitalize()}</p>
+      </div>
+
+      <div style="text-align:center;margin:28px 0;">
+        <a href="{login_url}" style="background-color:#1A4D3A;color:#ffffff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:15px;display:inline-block;box-shadow:0 4px 6px rgba(26,77,58,0.15);">Login to Admin</a>
+      </div>
+
+      <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:14px 16px;border-radius:8px;margin:20px 0;">
+        <p style="margin:0;color:#92400e;font-size:14px;font-weight:600;">
+          Please change your password after first login.
+        </p>
+        <p style="margin:6px 0 0;color:#78350f;font-size:13px;">
+          You can change your password anytime by navigating to <strong>My Account</strong> (/admin/profile) in the admin panel.
+        </p>
+      </div>
+
+      <div style="margin-top:32px;padding-top:20px;border-top:1px solid #e2e8f0;text-align:center;color:#64748b;font-size:13px;">
+        <p style="margin:0 0 4px;font-weight:600;color:#1A4D3A;">Narkadhai</p>
+        <p style="margin:0;">Connecting hearts with homes · One step at a time</p>
+      </div>
+    </div>
+    """
+    try:
+        svc.send(to=admin_email, subject=subject, html=html)
+        logger.info("Admin welcome email successfully sent to %s", admin_email)
+        return True
+    except Exception as e:
+        logger.error("Failed to send admin welcome email to %s: %s", admin_email, e)
+        return False
+
+
 def _format_inr(amount: float) -> str:
     """Format a number as Indian Rupee with Indian digit grouping."""
     s = str(int(amount))
@@ -281,3 +333,4 @@ def _format_inr(amount: float) -> str:
     if rest:
         groups.insert(0, rest)
     return f"₹{','.join(groups)},{last3}"
+
