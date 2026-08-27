@@ -264,7 +264,15 @@ export default function DonatePage() {
                     type="file"
                     accept="image/*,application/pdf"
                     className="hidden"
-                    onChange={e => setScreenshotFile(e.target.files?.[0] || null)}
+                    onChange={e => {
+                      const f = e.target.files?.[0] || null;
+                      if (f && f.size > 524288000) {
+                        toast.error('File too large. Maximum size is 500MB');
+                        e.target.value = '';
+                        return;
+                      }
+                      setScreenshotFile(f);
+                    }}
                   />
                   {screenshotFile ? (
                     <p className="text-sm text-primary-600">📎 {screenshotFile.name}</p>
@@ -272,7 +280,7 @@ export default function DonatePage() {
                     <div className="flex flex-col items-center gap-2">
                       <Upload className="w-8 h-8 text-gray-300" />
                       <p className="text-sm text-gray-400">Click to upload screenshot</p>
-                      <p className="text-xs text-gray-300">JPG, PNG or PDF, max 10MB</p>
+                      <p className="text-xs text-gray-300">JPG, PNG or PDF, max 500MB</p>
                     </div>
                   )}
                 </div>

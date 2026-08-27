@@ -49,6 +49,10 @@ export default function AdminSettings() {
 
   const handleQrUpload = async () => {
     if (!qrFile) return;
+    if (qrFile.size > 524288000) {
+      toast.error('File too large. Maximum size is 500MB');
+      return;
+    }
     setUploadingQr(true);
     try {
       const ext = qrFile.name.split('.').pop() || 'png';
@@ -69,6 +73,10 @@ export default function AdminSettings() {
 
   const handleQrUpload2 = async () => {
     if (!qrFile2) return;
+    if (qrFile2.size > 524288000) {
+      toast.error('File too large. Maximum size is 500MB');
+      return;
+    }
     setUploadingQr2(true);
     try {
       const ext = qrFile2.name.split('.').pop() || 'png';

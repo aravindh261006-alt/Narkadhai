@@ -226,44 +226,44 @@ grant execute on function public.is_admin_authorized(text) to authenticated;
 -- Create these manually in the Supabase dashboard → Storage,
 -- or run via Supabase SQL Editor.
 -- ============================================================
--- Bucket: album-photos (public read — images & videos up to 100MB)
+-- Bucket: album-photos (public read — images & videos up to 500MB)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('album-photos', 'album-photos', true, 104857600, array['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/quicktime','video/webm'])
+values ('album-photos', 'album-photos', true, 524288000, array['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/quicktime','video/webm','video/avi'])
 on conflict (id) do update set
   public = true,
-  file_size_limit = 104857600,
-  allowed_mime_types = array['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/quicktime','video/webm'];
+  file_size_limit = 524288000,
+  allowed_mime_types = array['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/quicktime','video/webm','video/avi'];
 
--- Bucket: audit-docs (public read — PDFs, images)
+-- Bucket: audit-docs (public read — PDFs, images up to 500MB)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('audit-docs', 'audit-docs', true, 20971520, array['application/pdf','image/jpeg','image/png'])
+values ('audit-docs', 'audit-docs', true, 524288000, array['application/pdf','image/jpeg','image/png'])
 on conflict (id) do update set
   public = true,
-  file_size_limit = 20971520,
+  file_size_limit = 524288000,
   allowed_mime_types = array['application/pdf','image/jpeg','image/png'];
 
--- Bucket: member-photos (public read)
+-- Bucket: member-photos (public read up to 500MB)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('member-photos', 'member-photos', true, 5242880, array['image/jpeg','image/png','image/webp'])
+values ('member-photos', 'member-photos', true, 524288000, array['image/jpeg','image/png','image/webp'])
 on conflict (id) do update set
   public = true,
-  file_size_limit = 5242880,
+  file_size_limit = 524288000,
   allowed_mime_types = array['image/jpeg','image/png','image/webp'];
 
--- Bucket: qr-codes (public read)
+-- Bucket: qr-codes (public read up to 500MB)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('qr-codes', 'qr-codes', true, 2097152, array['image/jpeg','image/png','image/webp'])
+values ('qr-codes', 'qr-codes', true, 524288000, array['image/jpeg','image/png','image/webp'])
 on conflict (id) do update set
   public = true,
-  file_size_limit = 2097152,
+  file_size_limit = 524288000,
   allowed_mime_types = array['image/jpeg','image/png','image/webp'];
 
--- Bucket: donation-screenshots (private — NOT public read)
+-- Bucket: donation-screenshots (private — NOT public read up to 500MB)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('donation-screenshots', 'donation-screenshots', false, 10485760, array['image/jpeg','image/png','image/webp','application/pdf'])
+values ('donation-screenshots', 'donation-screenshots', false, 524288000, array['image/jpeg','image/png','image/webp','application/pdf'])
 on conflict (id) do update set
   public = false,
-  file_size_limit = 10485760,
+  file_size_limit = 524288000,
   allowed_mime_types = array['image/jpeg','image/png','image/webp','application/pdf'];
 
 -- ============================================================

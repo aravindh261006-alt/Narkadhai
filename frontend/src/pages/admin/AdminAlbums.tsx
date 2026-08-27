@@ -114,13 +114,36 @@ export default function AdminAlbums() {
   };
 
   const handleMediaUpload = async (albumId: string, file: File) => {
+    const MAX_FILE_SIZE = 524288000; // 500MB
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('File too large. Maximum size is 500MB');
+      return;
+    }
+
     setUploading(true);
     try {
-      const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm)$/i.test(file.name);
+      const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|avi)$/i.test(file.name);
       const mediaType = isVideo ? 'video' : 'image';
       const ext = file.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg');
       const path = `${albumId}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
-      const { data: uploadData, error } = await supabase.storage.from('album-photos').upload(path, file);
+
+      // Explicitly set contentType to prevent browser mismatch on video uploads
+      let contentType = file.type;
+      if (!contentType || contentType === 'application/octet-stream') {
+        if (/\.mp4$/i.test(file.name)) contentType = 'video/mp4';
+        else if (/\.mov$/i.test(file.name)) contentType = 'video/quicktime';
+        else if (/\.webm$/i.test(file.name)) contentType = 'video/webm';
+        else if (/\.avi$/i.test(file.name)) contentType = 'video/avi';
+        else if (/\.(jpg|jpeg)$/i.test(file.name)) contentType = 'image/jpeg';
+        else if (/\.png$/i.test(file.name)) contentType = 'image/png';
+        else if (/\.webp$/i.test(file.name)) contentType = 'image/webp';
+        else if (/\.gif$/i.test(file.name)) contentType = 'image/gif';
+      }
+
+      const { data: uploadData, error } = await supabase.storage
+        .from('album-photos')
+        .upload(path, file, { contentType, upsert: true });
+
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('album-photos').getPublicUrl(uploadData.path);
       await albumsApi.addPhoto(albumId, { photo_url: publicUrl, caption: '', media_type: mediaType });
@@ -129,7 +152,12 @@ export default function AdminAlbums() {
       load();
     } catch (uploadErr: any) {
       console.error('Media upload failed:', uploadErr);
-      toast.error(uploadErr?.message || uploadErr?.response?.data?.detail || 'Upload failed. Check Supabase storage bucket & RLS policies.');
+      const msg = uploadErr?.message || uploadErr?.response?.data?.detail || '';
+      if (msg.includes('mime type') || msg.includes('not supported') || msg.includes('mime_type')) {
+        toast.error('Video MIME type rejected by Supabase storage. Please run the SQL bucket update in Supabase.');
+      } else {
+        toast.error(msg || 'Upload failed. Check Supabase storage bucket & RLS policies.');
+      }
     } finally { setUploading(false); }
   };
 
@@ -224,12 +252,13 @@ export default function AdminAlbums() {
                 <label className="block mb-4 cursor-pointer border-2 border-dashed border-primary-200 rounded-xl p-5 text-center hover:border-primary-400 hover:bg-primary-50/20 transition-all">
                   <input
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm"
+                    accept="image/*,video/mp4,video/webm,video/quicktime,video/avi,.mp4,.mov,.webm,.avi"
                     multiple
                     className="hidden"
                     onChange={async e => {
                       const files = Array.from(e.target.files || []);
                       for (const f of files) await handleMediaUpload(selected.id, f);
+                      if (e.target) e.target.value = '';
                     }}
                   />
                   {uploading ? (
@@ -242,7 +271,7 @@ export default function AdminAlbums() {
                         📷🎥 Add Photos & Videos
                       </span>
                       <span className="text-xs text-gray-400">
-                        Supports JPG, PNG, WEBP, GIF, MP4, MOV, WEBM (up to 100MB)
+                        Supports Images (JPG, PNG, WEBP, GIF) & Videos (MP4, WEBM, MOV, AVI) up to 500MB
                       </span>
                     </div>
                   )}
