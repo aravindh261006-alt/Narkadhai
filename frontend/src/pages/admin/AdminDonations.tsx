@@ -211,6 +211,7 @@ support.narkadhai@gmail.com`;
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Donor</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Amount</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">UTR / Txn ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">QR Used</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Screenshot</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
@@ -219,7 +220,7 @@ support.narkadhai@gmail.com`;
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-12 text-center text-gray-400">No donations found</td></tr>
+                  <tr><td colSpan={8} className="px-4 py-12 text-center text-gray-400">No donations found</td></tr>
                 ) : (Array.isArray(filtered) ? filtered : []).map(d => {
                   const cfg = STATUS_CONFIG[d.status];
                   const canSendEmail = hasValidEmail(d.donor_email);
@@ -231,6 +232,15 @@ support.narkadhai@gmail.com`;
                       </td>
                       <td className="px-4 py-3 font-semibold text-gray-800">{formatINR(d.amount)}</td>
                       <td className="px-4 py-3 text-gray-600 text-xs font-mono">{d.utr_or_txn_id || '—'}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          d.payment_qr_used === 'backup'
+                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                            : 'bg-primary-50 text-primary-800 border border-primary-100'
+                        }`}>
+                          {d.payment_qr_used === 'backup' ? 'Backup QR' : 'Primary QR'}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         {d.screenshot_url ? (
                           <button
@@ -319,6 +329,7 @@ support.narkadhai@gmail.com`;
                 ['Email', selected.donor_email || '—'],
                 ['Amount', formatINR(selected.amount)],
                 ['UTR / Txn ID', selected.utr_or_txn_id || '—'],
+                ['Payment QR Used', selected.payment_qr_used === 'backup' ? 'Backup QR' : 'Primary QR'],
                 ['Status', selected.status],
                 ['Submitted', formatDate(selected.created_at)],
                 ['Verified By', selected.verified_by || '—'],

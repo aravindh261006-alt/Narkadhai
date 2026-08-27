@@ -53,16 +53,17 @@ create table if not exists public.album_photos (
 
 -- Donations (self-reported by donors)
 create table if not exists public.donations (
-  id             uuid primary key default uuid_generate_v4(),
-  donor_name     text not null,
-  donor_email    text not null,
-  amount         numeric(12,2) not null check (amount > 0),
-  utr_or_txn_id  text,
-  screenshot_url text,
-  status         text not null default 'pending' check (status in ('pending','verified','rejected')),
-  created_at     timestamptz not null default now(),
-  verified_at    timestamptz,
-  verified_by    text
+  id              uuid primary key default uuid_generate_v4(),
+  donor_name      text not null,
+  donor_email     text not null,
+  amount          numeric(12,2) not null check (amount > 0),
+  utr_or_txn_id   text,
+  screenshot_url  text,
+  status          text not null default 'pending' check (status in ('pending','verified','rejected')),
+  payment_qr_used text default 'primary',
+  created_at      timestamptz not null default now(),
+  verified_at     timestamptz,
+  verified_by     text
 );
 
 -- Site settings (key-value store)
@@ -75,6 +76,8 @@ create table if not exists public.settings (
 insert into public.settings (key, value) values
   ('donation_target_amount', '100000'),
   ('qr_code_url', ''),
+  ('qr_code_url_2', ''),
+  ('qr_code_label_2', 'Backup QR'),
   ('instagram_url', 'https://www.instagram.com/narkadhai'),
   ('instagram_handle', '@narkadhai'),
   ('mission_text', 'Narkadhai is an informal initiative that visits children''s homes and old-age homes, collecting voluntary donations to support them. We believe in radical transparency — every rupee is accounted for and our books are open.'),

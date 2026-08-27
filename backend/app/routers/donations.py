@@ -32,6 +32,7 @@ class DonationCreate(BaseModel):
         ),
     )
     utr_or_txn_id: str | None = Field(default=None, max_length=100)
+    payment_qr_used: str | None = Field(default="primary", max_length=50)
     # Honeypot field — must be empty; bots fill it, humans don't
     website: str | None = Field(default=None)
 
@@ -120,7 +121,13 @@ async def submit_donation(payload: DonationCreate, request: Request):
         .gte("created_at", dedup_cutoff)
         .execute()
     )
-    if (dup_check.count or 0) > 0:
+    dup_count = getattr(dup_check, "count", 0)
+    try:
+        dup_count_val = int(dup_count) if dup_count is not None else 0
+    except (ValueError, TypeError):
+        dup_count_val = 0
+
+    if dup_count_val > 0:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
@@ -138,8 +145,18 @@ async def submit_donation(payload: DonationCreate, request: Request):
         "amount": payload.amount,
         "utr_or_txn_id": payload.utr_or_txn_id,
         "status": "pending",
+        "payment_qr_used": payload.payment_qr_used or "primary",
     }
-    resp = db.table("donations").insert(insert_data).execute()
+    try:
+        resp = db.table("donations").insert(insert_data).execute()
+    except Exception as insert_err:
+        # Fallback if payment_qr_used column doesn't exist yet in Supabase
+        if "payment_qr_used" in str(insert_err):
+            logger.warning("payment_qr_used column may not exist yet in donations table. Falling back to insert without it: %s", insert_err)
+            fallback_data = {k: v for k, v in insert_data.items() if k != "payment_qr_used"}
+            resp = db.table("donations").insert(fallback_data).execute()
+        else:
+            raise
     if not resp.data:
         raise HTTPException(status_code=500, detail="Failed to save donation record. Please try again.")
 

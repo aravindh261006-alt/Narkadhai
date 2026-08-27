@@ -599,6 +599,56 @@ class TestAdminEndpoints(unittest.TestCase):
             svc = get_email_service()
             self.assertIsInstance(svc, GmailAPIEmailService)
 
+    @patch("app.routers.settings_router.get_supabase")
+    def test_backup_qr_settings_allowed(self, mock_get_db):
+        """Test that qr_code_url_2 and qr_code_label_2 can be updated by owner."""
+        app.dependency_overrides[require_owner] = mock_owner_admin
+        mock_db = MagicMock()
+        mock_get_db.return_value = mock_db
+
+        resp = client.put(
+            "/api/settings",
+            json={"updates": {
+                "qr_code_url_2": "https://example.com/backup-qr.png",
+                "qr_code_label_2": "PhonePe QR",
+            }},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["ok"], True)
+
+    @patch("app.services.email_service.send_donor_thankyou", return_value=True)
+    @patch("app.services.email_service.send_owner_donation_notification", return_value=True)
+    @patch("app.routers.donations.check_rate_limit", return_value=True)
+    @patch("app.routers.donations.get_supabase")
+    def test_submit_donation_with_payment_qr_used(self, mock_get_db, mock_rl, mock_owner_email, mock_donor_email):
+        """Test that payment_qr_used is accepted and saved during donation submission."""
+        mock_db = MagicMock()
+        mock_get_db.return_value = mock_db
+
+        # No duplicate
+        mock_db.table().select().eq().eq().gte().execute.return_value.data = []
+        mock_db.table().select().eq().eq().gte().execute.return_value.count = 0
+        # Insert success
+        mock_db.table().insert().execute.return_value.data = [
+            {"id": "don-backup-1", "donor_name": "Bob", "amount": 1000, "payment_qr_used": "backup"}
+        ]
+        # Admins
+        mock_db.table().select().execute.return_value.data = []
+
+        resp = client.post(
+            "/api/donations",
+            json={
+                "donor_name": "Bob",
+                "donor_email": "bob@example.com",
+                "amount": 1000,
+                "payment_qr_used": "backup",
+            },
+        )
+        self.assertEqual(resp.status_code, 201)
+        # Check that insert was called with payment_qr_used="backup"
+        insert_args = mock_db.table().insert.call_args[0][0]
+        self.assertEqual(insert_args["payment_qr_used"], "backup")
+
 
 if __name__ == "__main__":
     unittest.main()

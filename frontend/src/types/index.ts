@@ -40,6 +40,7 @@ export interface Donation {
   utr_or_txn_id: string | null;
   screenshot_url: string | null;
   status: 'pending' | 'verified' | 'rejected';
+  payment_qr_used?: 'primary' | 'backup' | string;
   created_at: string;
   verified_at: string | null;
   verified_by: string | null;
@@ -55,6 +56,8 @@ export interface DonationTotals {
 export interface Settings {
   donation_target_amount?: string;
   qr_code_url?: string;
+  qr_code_url_2?: string;
+  qr_code_label_2?: string;
   instagram_url?: string;
   instagram_handle?: string;
   mission_text?: string;
