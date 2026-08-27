@@ -673,6 +673,62 @@ class TestAdminEndpoints(unittest.TestCase):
         self.assertEqual(insert_args["media_type"], "video")
         self.assertEqual(insert_args["photo_url"], "https://example.com/video.mp4")
 
+    @patch("app.routers.albums.get_supabase")
+    def test_delete_photo_updates_cover_to_next(self, mock_get_db):
+        """Test that deleting the album's cover photo automatically reassigns cover to next photo."""
+        app.dependency_overrides[require_owner] = mock_owner_admin
+        mock_db = MagicMock()
+        mock_get_db.return_value = mock_db
+
+        album_photos_table = MagicMock()
+        albums_table = MagicMock()
+
+        mock_db.table.side_effect = lambda t: album_photos_table if t == "album_photos" else albums_table
+
+        # Photo being deleted was https://example.com/cover.jpg
+        album_photos_table.select().eq().eq().single().execute.return_value.data = {
+            "photo_url": "https://example.com/cover.jpg"
+        }
+        # Album cover was https://example.com/cover.jpg
+        albums_table.select().eq().single().execute.return_value.data = {
+            "cover_photo_url": "https://example.com/cover.jpg"
+        }
+        # Remaining photos has p2.jpg
+        album_photos_table.select().eq().order().execute.return_value.data = [
+            {"photo_url": "https://example.com/p2.jpg", "media_type": "image"}
+        ]
+
+        resp = client.delete("/api/albums/alb-1/photos/p-1")
+        self.assertEqual(resp.status_code, 204)
+
+        # Verify album cover was updated to p2.jpg
+        albums_table.update.assert_called_once_with({"cover_photo_url": "https://example.com/p2.jpg"})
+
+    @patch("app.routers.albums.get_supabase")
+    def test_delete_photo_clears_cover_when_no_photos_remain(self, mock_get_db):
+        """Test that deleting the last photo sets cover_photo_url to None."""
+        app.dependency_overrides[require_owner] = mock_owner_admin
+        mock_db = MagicMock()
+        mock_get_db.return_value = mock_db
+
+        album_photos_table = MagicMock()
+        albums_table = MagicMock()
+
+        mock_db.table.side_effect = lambda t: album_photos_table if t == "album_photos" else albums_table
+
+        album_photos_table.select().eq().eq().single().execute.return_value.data = {
+            "photo_url": "https://example.com/cover.jpg"
+        }
+        albums_table.select().eq().single().execute.return_value.data = {
+            "cover_photo_url": "https://example.com/cover.jpg"
+        }
+        album_photos_table.select().eq().order().execute.return_value.data = []
+
+        resp = client.delete("/api/albums/alb-1/photos/p-1")
+        self.assertEqual(resp.status_code, 204)
+
+        albums_table.update.assert_called_once_with({"cover_photo_url": None})
+
 
 if __name__ == "__main__":
     unittest.main()

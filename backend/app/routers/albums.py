@@ -180,11 +180,62 @@ async def delete_photo(
     photo_id: str,
     admin: Annotated[AdminUser, Depends(require_owner)],
 ):
-    """Owner only: remove a photo from an album."""
+    """Owner only: remove a photo from an album and update cover if needed."""
     try:
         db = get_supabase()
         logger.info("Admin %s removing photo %s from album %s", admin.email, photo_id, album_id)
+
+        # 1. Fetch photo details to check if its URL matches album cover
+        photo_url_to_delete = None
+        try:
+            p_resp = db.table("album_photos").select("photo_url").eq("id", photo_id).eq("album_id", album_id).single().execute()
+            if p_resp.data:
+                photo_url_to_delete = p_resp.data.get("photo_url")
+        except Exception as p_err:
+            logger.warning("Could not fetch photo %s before deletion: %s", photo_id, p_err)
+
+        # 2. Fetch current album cover photo URL
+        album_cover = None
+        try:
+            a_resp = db.table("albums").select("cover_photo_url").eq("id", album_id).single().execute()
+            if a_resp.data:
+                album_cover = a_resp.data.get("cover_photo_url")
+        except Exception as a_err:
+            logger.warning("Could not fetch album %s cover before photo deletion: %s", album_id, a_err)
+
+        # 3. Delete the photo from album_photos
         db.table("album_photos").delete().eq("id", photo_id).eq("album_id", album_id).execute()
+
+        # 4. If deleted photo was the cover, pick the next photo or set to None
+        if photo_url_to_delete and album_cover and photo_url_to_delete == album_cover:
+            try:
+                rem_resp = (
+                    db.table("album_photos")
+                    .select("photo_url, media_type")
+                    .eq("album_id", album_id)
+                    .order("created_at", desc=False)
+                    .execute()
+                )
+                remaining = rem_resp.data or []
+                # Prefer an image for cover photo if available, otherwise take first media item
+                next_cover = None
+                for item in remaining:
+                    if item.get("media_type") != "video":
+                        next_cover = item.get("photo_url")
+                        break
+                if not next_cover and remaining:
+                    next_cover = remaining[0].get("photo_url")
+
+                db.table("albums").update({"cover_photo_url": next_cover}).eq("id", album_id).execute()
+                logger.info(
+                    "Photo %s was cover for album %s. Auto-updated cover to: %s",
+                    photo_id,
+                    album_id,
+                    next_cover,
+                )
+            except Exception as update_err:
+                logger.warning("Failed to auto-update album cover after photo deletion: %s", update_err)
+
     except Exception as e:
         logger.error("Error deleting photo %s: %s", photo_id, e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to delete photo: {str(e)}")

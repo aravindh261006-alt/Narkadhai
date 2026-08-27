@@ -121,7 +121,29 @@ export const albumsApi = {
   update: (id: string, data: object) => api.put(`/albums/${id}`, data).then(r => r.data),
   delete: (id: string) => api.delete(`/albums/${id}`),
   addPhoto: (albumId: string, data: object) => api.post(`/albums/${albumId}/photos`, data).then(r => r.data),
-  deletePhoto: (albumId: string, photoId: string) => api.delete(`/albums/${albumId}/photos/${photoId}`),
+  deletePhoto: async (albumId: string, photoId: string) => {
+    try {
+      return await api.delete(`/albums/${albumId}/photos/${photoId}`);
+    } catch (err) {
+      if (isSupabaseConfigured) {
+        console.warn('Backend deletePhoto failed, attempting direct Supabase deletion', err);
+        const { data: photo } = await supabase.from('album_photos').select('photo_url').eq('id', photoId).single();
+        const { data: album } = await supabase.from('albums').select('cover_photo_url').eq('id', albumId).single();
+        await supabase.from('album_photos').delete().eq('id', photoId);
+        if (photo?.photo_url && album?.cover_photo_url && photo.photo_url === album.cover_photo_url) {
+          const { data: remaining } = await supabase
+            .from('album_photos')
+            .select('photo_url, media_type')
+            .eq('album_id', albumId)
+            .order('created_at', { ascending: true });
+          const nextImg = (remaining || []).find(r => r.media_type !== 'video')?.photo_url || (remaining || [])[0]?.photo_url || null;
+          await supabase.from('albums').update({ cover_photo_url: nextImg }).eq('id', albumId);
+        }
+        return;
+      }
+      throw err;
+    }
+  },
   getUploadUrl: () => api.post('/albums/upload-url').then(r => r.data),
 };
 

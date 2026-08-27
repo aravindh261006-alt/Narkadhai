@@ -165,7 +165,8 @@ export default function AdminAlbums() {
     try {
       await albumsApi.deletePhoto(albumId, photoId);
       toast.success('Media removed');
-      loadAlbum(albumId);
+      await loadAlbum(albumId);
+      load();
     } catch { toast.error('Failed to remove'); }
   };
 
