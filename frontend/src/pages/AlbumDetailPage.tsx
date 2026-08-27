@@ -1,6 +1,13 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Camera, PhoneCall, MapPin, ExternalLink, Calendar } from 'lucide-react';
+import Lightbox from 'yet-another-react-lightbox';
+import Video from 'yet-another-react-lightbox/plugins/video';
+import Counter from 'yet-another-react-lightbox/plugins/counter';
+import Captions from 'yet-another-react-lightbox/plugins/captions';
+import 'yet-another-react-lightbox/styles.css';
+import 'yet-another-react-lightbox/plugins/counter.css';
+import 'yet-another-react-lightbox/plugins/captions.css';
 import { albumsApi } from '../lib/api';
 import { formatDate } from '../lib/utils';
 import type { AlbumWithPhotos } from '../types';
@@ -34,7 +41,7 @@ export default function AlbumDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [album, setAlbum] = useState<AlbumWithPhotos | null>(null);
   const [loading, setLoading] = useState(true);
-  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number>(-1);
 
   useEffect(() => {
     if (id) albumsApi.get(id).then(setAlbum).catch(() => {}).finally(() => setLoading(false));
@@ -44,6 +51,37 @@ export default function AlbumDetailPage() {
     if (!album?.photos || !Array.isArray(album.photos)) return [];
     return [...album.photos].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
   }, [album?.photos]);
+
+  const slides = useMemo(() => {
+    return sortedPhotos.map(item => {
+      const isVideo = item.media_type === 'video' || /\.(mp4|mov|webm|avi)(\?.*)?$/i.test(item.photo_url);
+      if (isVideo) {
+        let type = 'video/mp4';
+        if (/\.mov(\?.*)?$/i.test(item.photo_url)) type = 'video/quicktime';
+        else if (/\.webm(\?.*)?$/i.test(item.photo_url)) type = 'video/webm';
+        else if (/\.avi(\?.*)?$/i.test(item.photo_url)) type = 'video/avi';
+
+        return {
+          type: 'video' as const,
+          width: 1920,
+          height: 1080,
+          sources: [
+            {
+              src: item.photo_url,
+              type,
+            },
+          ],
+          description: item.caption || undefined,
+        };
+      }
+
+      return {
+        src: item.photo_url,
+        alt: item.caption || `${album?.home_name || 'Album'} photo`,
+        description: item.caption || undefined,
+      };
+    });
+  }, [sortedPhotos, album?.home_name]);
 
   if (loading) {
     return (
@@ -171,37 +209,47 @@ export default function AlbumDetailPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {sortedPhotos.map(item => {
-              const isVideo = item.media_type === 'video' || /\.(mp4|mov|webm)(\?.*)?$/i.test(item.photo_url);
+            {sortedPhotos.map((item, index) => {
+              const isVideo = item.media_type === 'video' || /\.(mp4|mov|webm|avi)(\?.*)?$/i.test(item.photo_url);
 
               if (isVideo) {
                 return (
-                  <div
+                  <button
                     key={item.id}
-                    className="aspect-square rounded-2xl overflow-hidden bg-black shadow-sm hover:shadow-md transition-all relative flex flex-col justify-center border border-gray-100 group"
+                    type="button"
+                    onClick={() => setLightboxIndex(index)}
+                    className="group aspect-square rounded-2xl overflow-hidden bg-black shadow-sm hover:shadow-md transition-all relative flex flex-col justify-center border border-gray-100 cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <video
                       src={item.photo_url}
-                      controls
                       muted
                       playsInline
                       preload="metadata"
-                      className="w-full h-full object-cover rounded-2xl"
+                      className="w-full h-full object-cover rounded-2xl group-hover:scale-105 transition-transform duration-300 pointer-events-none"
                     />
+                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/35 transition-colors flex items-center justify-center">
+                      <div className="w-13 h-13 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-xs group-hover:scale-110 group-hover:bg-primary-600 transition-all shadow-lg border border-white/20">
+                        <span className="text-xl ml-0.5 select-none">▶</span>
+                      </div>
+                    </div>
+                    <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-xs text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
+                      <span>▶</span> Video
+                    </div>
                     {item.caption && (
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 text-white text-xs pointer-events-none">
                         {item.caption}
                       </div>
                     )}
-                  </div>
+                  </button>
                 );
               }
 
               return (
                 <button
                   key={item.id}
-                  onClick={() => setLightbox(item.photo_url)}
-                  className="group aspect-square rounded-2xl overflow-hidden bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-sm hover:shadow-md transition-all relative"
+                  type="button"
+                  onClick={() => setLightboxIndex(index)}
+                  className="group aspect-square rounded-2xl overflow-hidden bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-sm hover:shadow-md transition-all relative cursor-pointer"
                 >
                   <img
                     src={item.photo_url}
@@ -220,27 +268,24 @@ export default function AlbumDetailPage() {
         )}
       </div>
 
-      {/* Lightbox */}
-      {lightbox && (
-        <div
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <img
-            src={lightbox}
-            alt="Full size view"
-            className="max-w-full max-h-[90vh] rounded-2xl object-contain shadow-2xl animate-[fade-in_0.2s_ease-out]"
-            onClick={e => e.stopPropagation()}
-          />
-          <button
-            onClick={() => setLightbox(null)}
-            className="absolute top-6 right-6 text-white text-3xl font-light hover:text-amber-400 transition-colors p-2 bg-black/40 rounded-full"
-            aria-label="Close photo"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+      {/* Fullscreen Lightbox / Slideshow */}
+      <Lightbox
+        open={lightboxIndex >= 0}
+        index={lightboxIndex}
+        close={() => setLightboxIndex(-1)}
+        slides={slides}
+        plugins={[Video, Counter, Captions]}
+        counter={{ separator: ' / ' }}
+        captions={{ descriptionTextAlign: 'center', descriptionMaxLines: 3 }}
+        video={{
+          controls: true,
+          playsInline: true,
+          autoPlay: true,
+        }}
+        on={{
+          view: ({ index }) => setLightboxIndex(index),
+        }}
+      />
     </div>
   );
 }
