@@ -42,12 +42,13 @@ create table if not exists public.albums (
   created_at     timestamptz not null default now()
 );
 
--- Album photos
+-- Album photos / media (images & videos)
 create table if not exists public.album_photos (
   id         uuid primary key default uuid_generate_v4(),
   album_id   uuid not null references public.albums(id) on delete cascade,
   photo_url  text not null,
   caption    text,
+  media_type text not null default 'image' check (media_type in ('image', 'video')),
   created_at timestamptz not null default now()
 );
 
@@ -225,13 +226,13 @@ grant execute on function public.is_admin_authorized(text) to authenticated;
 -- Create these manually in the Supabase dashboard → Storage,
 -- or run via Supabase SQL Editor.
 -- ============================================================
--- Bucket: album-photos (public read)
+-- Bucket: album-photos (public read — images & videos up to 100MB)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('album-photos', 'album-photos', true, 10485760, array['image/jpeg','image/png','image/webp','image/gif'])
+values ('album-photos', 'album-photos', true, 104857600, array['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/quicktime','video/webm'])
 on conflict (id) do update set
   public = true,
-  file_size_limit = 10485760,
-  allowed_mime_types = array['image/jpeg','image/png','image/webp','image/gif'];
+  file_size_limit = 104857600,
+  allowed_mime_types = array['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/quicktime','video/webm'];
 
 -- Bucket: audit-docs (public read — PDFs, images)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

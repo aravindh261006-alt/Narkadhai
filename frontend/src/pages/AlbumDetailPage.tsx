@@ -150,40 +150,67 @@ export default function AlbumDetailPage() {
         </div>
       )}
 
-      {/* Photos Grid */}
+      {/* Photos & Videos Grid */}
       <div>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="font-display text-2xl font-bold text-primary-900">Photo Gallery</h2>
+          <h2 className="font-display text-2xl font-bold text-primary-900">Photos & Videos</h2>
           <span className="text-sm text-gray-500 font-medium">
-            {album.photos?.length || 0} photo{album.photos?.length !== 1 ? 's' : ''}
+            {album.photos?.length || 0} item{album.photos?.length !== 1 ? 's' : ''}
           </span>
         </div>
 
         {(!album.photos || !Array.isArray(album.photos) || album.photos.length === 0) ? (
           <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200 text-gray-400">
             <Camera className="w-16 h-16 mx-auto mb-4 opacity-20" />
-            <p className="text-base font-medium">No photos in this album yet.</p>
+            <p className="text-base font-medium">No photos or videos in this album yet.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {(Array.isArray(album.photos) ? album.photos : []).map(photo => (
-              <button
-                key={photo.id}
-                onClick={() => setLightbox(photo.photo_url)}
-                className="group aspect-square rounded-2xl overflow-hidden bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-sm hover:shadow-md transition-all relative"
-              >
-                <img
-                  src={photo.photo_url}
-                  alt={photo.caption || `${album.home_name} photo`}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                />
-                {photo.caption && (
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                    {photo.caption}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {(Array.isArray(album.photos) ? album.photos : []).map(item => {
+              const isVideo = item.media_type === 'video' || /\.(mp4|mov|webm)(\?.*)?$/i.test(item.photo_url);
+
+              if (isVideo) {
+                return (
+                  <div
+                    key={item.id}
+                    className="aspect-square rounded-2xl overflow-hidden bg-black shadow-sm hover:shadow-md transition-all relative flex flex-col justify-center border border-gray-100 group"
+                  >
+                    <video
+                      src={item.photo_url}
+                      controls
+                      muted
+                      playsInline
+                      preload="metadata"
+                      className="w-full h-full object-cover rounded-2xl"
+                    />
+                    {item.caption && (
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 text-white text-xs pointer-events-none">
+                        {item.caption}
+                      </div>
+                    )}
                   </div>
-                )}
-              </button>
-            ))}
+                );
+              }
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setLightbox(item.photo_url)}
+                  className="group aspect-square rounded-2xl overflow-hidden bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-sm hover:shadow-md transition-all relative"
+                >
+                  <img
+                    src={item.photo_url}
+                    alt={item.caption || `${album.home_name} photo`}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                  {item.caption && (
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                      {item.caption}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

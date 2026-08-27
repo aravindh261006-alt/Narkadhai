@@ -25,6 +25,7 @@ export interface AlbumPhoto {
   album_id: string;
   photo_url: string;
   caption: string | null;
+  media_type?: 'image' | 'video' | string;
   created_at: string;
 }
 

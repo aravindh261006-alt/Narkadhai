@@ -29,6 +29,7 @@ class AlbumUpdate(BaseModel):
 class PhotoAdd(BaseModel):
     photo_url: str
     caption: str | None = None
+    media_type: str = "image"
 
 
 @router.get("")
@@ -137,21 +138,33 @@ async def add_photo(
     try:
         db = get_supabase()
         logger.info("Admin %s adding photo to album %s", admin.email, album_id)
-        resp = db.table("album_photos").insert({
+        insert_data = {
             "album_id": album_id,
             "photo_url": payload.photo_url,
             "caption": payload.caption,
-        }).execute()
+            "media_type": payload.media_type or "image",
+        }
+        try:
+            resp = db.table("album_photos").insert(insert_data).execute()
+        except Exception as insert_err:
+            if "media_type" in str(insert_err):
+                logger.warning("media_type column may not exist yet in album_photos. Falling back to insert without it: %s", insert_err)
+                fallback_data = {k: v for k, v in insert_data.items() if k != "media_type"}
+                resp = db.table("album_photos").insert(fallback_data).execute()
+            else:
+                raise
+
         if not resp.data:
             raise HTTPException(status_code=500, detail="Database returned no record on photo add.")
 
-        # If album has no cover photo, set this photo as cover
-        try:
-            album = db.table("albums").select("cover_photo_url").eq("id", album_id).single().execute()
-            if album.data and not album.data.get("cover_photo_url"):
-                db.table("albums").update({"cover_photo_url": payload.photo_url}).eq("id", album_id).execute()
-        except Exception as e:
-            logger.warning("Could not auto-set cover photo for album %s: %s", album_id, e)
+        # If album has no cover photo and this is an image, set this photo as cover
+        if (payload.media_type or "image") == "image":
+            try:
+                album = db.table("albums").select("cover_photo_url").eq("id", album_id).single().execute()
+                if album.data and not album.data.get("cover_photo_url"):
+                    db.table("albums").update({"cover_photo_url": payload.photo_url}).eq("id", album_id).execute()
+            except Exception as e:
+                logger.warning("Could not auto-set cover photo for album %s: %s", album_id, e)
 
         return resp.data[0]
     except HTTPException:

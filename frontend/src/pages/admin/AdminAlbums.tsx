@@ -113,28 +113,30 @@ export default function AdminAlbums() {
     }
   };
 
-  const handlePhotoUpload = async (albumId: string, file: File) => {
+  const handleMediaUpload = async (albumId: string, file: File) => {
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop() || 'jpg';
-      const path = `${albumId}/${Date.now()}.${ext}`;
+      const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm)$/i.test(file.name);
+      const mediaType = isVideo ? 'video' : 'image';
+      const ext = file.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg');
+      const path = `${albumId}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
       const { data: uploadData, error } = await supabase.storage.from('album-photos').upload(path, file);
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('album-photos').getPublicUrl(uploadData.path);
-      await albumsApi.addPhoto(albumId, { photo_url: publicUrl, caption: '' });
-      toast.success('Photo added');
+      await albumsApi.addPhoto(albumId, { photo_url: publicUrl, caption: '', media_type: mediaType });
+      toast.success(isVideo ? 'Video added' : 'Photo added');
       await loadAlbum(albumId);
       load();
     } catch (uploadErr: any) {
-      console.error('Photo upload failed:', uploadErr);
-      toast.error(uploadErr?.message || uploadErr?.response?.data?.detail || 'Photo upload failed. Check Supabase storage bucket & RLS policies.');
+      console.error('Media upload failed:', uploadErr);
+      toast.error(uploadErr?.message || uploadErr?.response?.data?.detail || 'Upload failed. Check Supabase storage bucket & RLS policies.');
     } finally { setUploading(false); }
   };
 
   const handleDeletePhoto = async (albumId: string, photoId: string) => {
     try {
       await albumsApi.deletePhoto(albumId, photoId);
-      toast.success('Photo removed');
+      toast.success('Media removed');
       loadAlbum(albumId);
     } catch { toast.error('Failed to remove'); }
   };
@@ -219,33 +221,68 @@ export default function AdminAlbums() {
                 })()}
 
                 {/* Upload area */}
-                <label className="block mb-4 cursor-pointer border-2 border-dashed border-primary-200 rounded-xl p-4 text-center hover:border-primary-400 transition-colors">
-                  <input type="file" accept="image/*" multiple className="hidden"
+                <label className="block mb-4 cursor-pointer border-2 border-dashed border-primary-200 rounded-xl p-5 text-center hover:border-primary-400 hover:bg-primary-50/20 transition-all">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm"
+                    multiple
+                    className="hidden"
                     onChange={async e => {
                       const files = Array.from(e.target.files || []);
-                      for (const f of files) await handlePhotoUpload(selected.id, f);
-                    }} />
+                      for (const f of files) await handleMediaUpload(selected.id, f);
+                    }}
+                  />
                   {uploading ? (
-                    <span className="flex items-center justify-center gap-2 text-primary-600 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</span>
+                    <span className="flex items-center justify-center gap-2 text-primary-600 text-sm font-medium">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Uploading media...
+                    </span>
                   ) : (
-                    <span className="text-primary-600 text-sm">📷 Click to add photos</span>
+                    <div className="flex flex-col items-center justify-center gap-1">
+                      <span className="text-primary-700 font-semibold text-sm">
+                        📷🎥 Add Photos & Videos
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        Supports JPG, PNG, WEBP, GIF, MP4, MOV, WEBM (up to 100MB)
+                      </span>
+                    </div>
                   )}
                 </label>
 
-                {/* Photos grid */}
+                {/* Media grid */}
                 {(!Array.isArray(selected.photos) || selected.photos.length === 0) ? (
-                  <p className="text-center text-gray-400 text-sm py-6">No photos yet</p>
+                  <p className="text-center text-gray-400 text-sm py-6">No photos or videos yet</p>
                 ) : (
                   <div className="grid grid-cols-3 gap-3">
-                    {(Array.isArray(selected.photos) ? selected.photos : []).map(p => (
-                      <div key={p.id} className="relative aspect-square rounded-xl overflow-hidden group">
-                        <img src={p.photo_url} alt={p.caption || ''} className="w-full h-full object-cover" />
-                        <button onClick={() => handleDeletePhoto(selected.id, p.id)}
-                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full p-0.5 transition-opacity">
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
+                    {(Array.isArray(selected.photos) ? selected.photos : []).map(p => {
+                      const isVid = p.media_type === 'video' || /\.(mp4|mov|webm)(\?.*)?$/i.test(p.photo_url);
+                      return (
+                        <div key={p.id} className="relative aspect-square rounded-xl overflow-hidden group bg-gray-900">
+                          {isVid ? (
+                            <>
+                              <video
+                                src={p.photo_url}
+                                className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+                                preload="metadata"
+                                muted
+                                playsInline
+                              />
+                              <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 pointer-events-none">
+                                <span>▶</span> Video
+                              </div>
+                            </>
+                          ) : (
+                            <img src={p.photo_url} alt={p.caption || ''} className="w-full h-full object-cover" />
+                          )}
+                          <button
+                            onClick={() => handleDeletePhoto(selected.id, p.id)}
+                            className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full p-1 transition-opacity shadow-md hover:bg-red-600"
+                            title="Delete media"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

@@ -649,6 +649,30 @@ class TestAdminEndpoints(unittest.TestCase):
         insert_args = mock_db.table().insert.call_args[0][0]
         self.assertEqual(insert_args["payment_qr_used"], "backup")
 
+    @patch("app.routers.albums.get_supabase")
+    def test_add_video_to_album(self, mock_get_db):
+        """Test that media_type='video' is accepted and stored when adding media to an album."""
+        app.dependency_overrides[require_owner] = mock_owner_admin
+        mock_db = MagicMock()
+        mock_get_db.return_value = mock_db
+
+        mock_db.table().insert().execute.return_value.data = [
+            {"id": "photo-vid-1", "album_id": "alb-1", "photo_url": "https://example.com/video.mp4", "media_type": "video"}
+        ]
+
+        resp = client.post(
+            "/api/albums/alb-1/photos",
+            json={
+                "photo_url": "https://example.com/video.mp4",
+                "caption": "Visit Highlights",
+                "media_type": "video",
+            },
+        )
+        self.assertEqual(resp.status_code, 201)
+        insert_args = mock_db.table().insert.call_args[0][0]
+        self.assertEqual(insert_args["media_type"], "video")
+        self.assertEqual(insert_args["photo_url"], "https://example.com/video.mp4")
+
 
 if __name__ == "__main__":
     unittest.main()
