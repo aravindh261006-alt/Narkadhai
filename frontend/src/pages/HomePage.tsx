@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Heart, Users, BookOpen, Camera, MessageSquareQuote, Send, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { settingsApi, albumsApi, communityMessagesApi } from '../lib/api';
-import { formatDate } from '../lib/utils';
+import { formatDate, parseAlbumDescription } from '../lib/utils';
 import type { Settings, Album, CommunityMessage } from '../types';
 
 function InstagramIcon({ className }: { className?: string }) {
@@ -147,7 +147,10 @@ export default function HomePage() {
                   <div className="p-4">
                     <h3 className="font-display font-bold text-primary-800 mb-1">{album.home_name}</h3>
                     <p className="text-xs text-gray-400">{formatDate(album.visit_date)}</p>
-                    {album.description && <p className="text-sm text-gray-500 mt-2 line-clamp-2">{album.description}</p>}
+                    {(() => {
+                      const cleanDesc = parseAlbumDescription(album.description).description;
+                      return cleanDesc ? <p className="text-sm text-gray-500 mt-2 line-clamp-2">{cleanDesc}</p> : null;
+                    })()}
                   </div>
                 </Link>
               ))}

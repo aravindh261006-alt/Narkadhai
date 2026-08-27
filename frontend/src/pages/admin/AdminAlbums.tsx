@@ -1,119 +1,196 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Plus, Trash2, Camera, ChevronRight, X, Loader2, Pencil } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  Camera,
+  X,
+  Loader2,
+  Pencil,
+  CheckCircle2,
+  Check,
+  ArrowLeft,
+  ExternalLink,
+  MapPin,
+  Image as ImageIcon
+} from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { albumsApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
-import { formatDate } from '../../lib/utils';
+import { formatDate, parseAlbumDescription, formatAlbumDescription } from '../../lib/utils';
 import type { Album, AlbumWithPhotos } from '../../types';
-
-const parseDescription = (desc: string | null) => {
-  if (!desc) return { location: '', contact: '', description: '' };
-  const match = desc.match(/^Location:\s*(.*)\nContact:\s*(.*)\n\n([\s\S]*)$/);
-  if (match) {
-    return {
-      location: match[1].trim(),
-      contact: match[2].trim(),
-      description: match[3].trim(),
-    };
-  }
-  return { location: '', contact: '', description: desc };
-};
-
-const formatDescription = (location: string, contact: string, desc: string) => {
-  return `Location: ${location}\nContact: ${contact}\n\n${desc}`;
-};
 
 export default function AdminAlbums() {
   const [albums, setAlbums] = useState<Album[]>([]);
-  const [selected, setSelected] = useState<AlbumWithPhotos | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [showEdit, setShowEdit] = useState(false);
-  const [creating, setCreating] = useState(false);
+
+  // Edit view state (Settings page style)
+  const [editingAlbum, setEditingAlbum] = useState<AlbumWithPhotos | null>(null);
+  const [loadingEdit, setLoadingEdit] = useState(false);
+  const [editForm, setEditForm] = useState({
+    home_name: '',
+    visit_date: '',
+    location: '',
+    contact_number: '',
+    description: '',
+  });
   const [savingDetails, setSavingDetails] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [newAlbum, setNewAlbum] = useState({ home_name: '', visit_date: '', location: '', contact_number: '', description: '' });
-  const [editAlbum, setEditAlbum] = useState({ home_name: '', visit_date: '', location: '', contact_number: '', description: '' });
 
-  const load = () => albumsApi.list()
-    .then(res => setAlbums(Array.isArray(res) ? res : []))
-    .catch(() => setAlbums([]))
-    .finally(() => setLoading(false));
-  useEffect(() => { load(); }, []);
+  // Create modal state
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newAlbum, setNewAlbum] = useState({
+    home_name: '',
+    visit_date: '',
+    location: '',
+    contact_number: '',
+    description: '',
+  });
 
-  const loadAlbum = (id: string) => albumsApi.get(id)
-    .then(res => setSelected(res ? { ...res, photos: Array.isArray(res.photos) ? res.photos : [] } : null))
-    .catch(() => {});
+  const loadAlbums = () =>
+    albumsApi
+      .list()
+      .then(res => setAlbums(Array.isArray(res) ? res : []))
+      .catch(() => setAlbums([]))
+      .finally(() => setLoading(false));
+
+  useEffect(() => {
+    loadAlbums();
+  }, []);
+
+  const openEdit = async (albumId: string) => {
+    setLoadingEdit(true);
+    try {
+      const albumData = await albumsApi.get(albumId);
+      if (albumData) {
+        const parsed = parseAlbumDescription(albumData.description);
+        setEditingAlbum({
+          ...albumData,
+          photos: Array.isArray(albumData.photos) ? albumData.photos : [],
+        });
+        setEditForm({
+          home_name: albumData.home_name || '',
+          visit_date: albumData.visit_date || '',
+          location: parsed.location || '',
+          contact_number: parsed.contact || '',
+          description: parsed.description || '',
+        });
+        // Scroll smoothly to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } catch (err) {
+      console.error('Failed to load album for editing:', err);
+      toast.error('Failed to load album details');
+    } finally {
+      setLoadingEdit(false);
+    }
+  };
+
+  const reloadEditingAlbum = async (albumId: string) => {
+    try {
+      const albumData = await albumsApi.get(albumId);
+      if (albumData) {
+        setEditingAlbum({
+          ...albumData,
+          photos: Array.isArray(albumData.photos) ? albumData.photos : [],
+        });
+      }
+    } catch (err) {
+      console.error('Failed to reload editing album:', err);
+    }
+  };
 
   const handleCreate = async () => {
-    if (!newAlbum.home_name || !newAlbum.visit_date) return toast.error('Home name and visit date are required');
+    if (!newAlbum.home_name || !newAlbum.visit_date) {
+      return toast.error('Home name and visit date are required');
+    }
     setCreating(true);
     try {
-      const formattedDesc = formatDescription(newAlbum.location, newAlbum.contact_number, newAlbum.description);
-      await albumsApi.create({
+      const formattedDesc = formatAlbumDescription(
+        newAlbum.location,
+        newAlbum.contact_number,
+        newAlbum.description
+      );
+      const created = await albumsApi.create({
         home_name: newAlbum.home_name,
         visit_date: newAlbum.visit_date,
         description: formattedDesc,
       });
-      toast.success('Album created');
+      toast.success('Album created successfully');
       setShowCreate(false);
       setNewAlbum({ home_name: '', visit_date: '', location: '', contact_number: '', description: '' });
-      load();
+      await loadAlbums();
+      if (created?.id) {
+        await openEdit(created.id);
+      }
     } catch (err: any) {
       console.error('Failed to create album:', err);
       toast.error(err?.response?.data?.detail || err?.message || 'Failed to create album');
-    } finally { setCreating(false); }
+    } finally {
+      setCreating(false);
+    }
   };
 
-  const openEdit = () => {
-    if (!selected) return;
-    const parsed = parseDescription(selected.description);
-    setEditAlbum({
-      home_name: selected.home_name,
-      visit_date: selected.visit_date,
-      location: parsed.location,
-      contact_number: parsed.contact,
-      description: parsed.description,
-    });
-    setShowEdit(true);
-  };
-
-  const handleEdit = async () => {
-    if (!selected) return;
-    if (!editAlbum.home_name || !editAlbum.visit_date) return toast.error('Home name and visit date are required');
+  const handleSaveDetails = async () => {
+    if (!editingAlbum) return;
+    if (!editForm.home_name || !editForm.visit_date) {
+      return toast.error('Home name and visit date are required');
+    }
     setSavingDetails(true);
     try {
-      const formattedDesc = formatDescription(editAlbum.location, editAlbum.contact_number, editAlbum.description);
-      await albumsApi.update(selected.id, {
-        home_name: editAlbum.home_name,
-        visit_date: editAlbum.visit_date,
+      const formattedDesc = formatAlbumDescription(
+        editForm.location,
+        editForm.contact_number,
+        editForm.description
+      );
+      await albumsApi.update(editingAlbum.id, {
+        home_name: editForm.home_name,
+        visit_date: editForm.visit_date,
         description: formattedDesc,
       });
-      toast.success('Album details updated');
-      setShowEdit(false);
-      loadAlbum(selected.id);
-      load();
+      toast.success('Album details saved!');
+      await reloadEditingAlbum(editingAlbum.id);
+      loadAlbums();
     } catch (err: any) {
-      console.error('Failed to update album details:', err);
-      toast.error(err?.response?.data?.detail || err?.message || 'Failed to update details');
-    } finally { setSavingDetails(false); }
+      console.error('Failed to save album:', err);
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to save changes');
+    } finally {
+      setSavingDetails(false);
+    }
   };
 
-  const handleDeleteAlbum = async (id: string) => {
-    if (!confirm('Delete this album and all its photos?')) return;
+  const handleSetCover = async (photoUrl: string) => {
+    if (!editingAlbum) return;
+    try {
+      await albumsApi.update(editingAlbum.id, { cover_photo_url: photoUrl });
+      setEditingAlbum(prev => prev ? { ...prev, cover_photo_url: photoUrl } : null);
+      toast.success('Cover photo updated!');
+      loadAlbums();
+    } catch (err: any) {
+      console.error('Failed to set cover photo:', err);
+      toast.error('Failed to update cover photo');
+    }
+  };
+
+  const handleDeleteAlbum = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete the album "${name}" and all its photos?`)) return;
     try {
       await albumsApi.delete(id);
       toast.success('Album deleted');
-      setSelected(null);
-      load();
+      if (editingAlbum?.id === id) {
+        setEditingAlbum(null);
+      }
+      loadAlbums();
     } catch (err: any) {
       console.error('Failed to delete album:', err);
       toast.error(err?.response?.data?.detail || err?.message || 'Failed to delete album');
     }
   };
 
-  const handleMediaUpload = async (albumId: string, file: File) => {
+  const handleMediaUpload = async (file: File) => {
+    if (!editingAlbum) return;
     const MAX_FILE_SIZE = 524288000; // 500MB
     if (file.size > MAX_FILE_SIZE) {
       toast.error('File too large. Maximum size is 500MB');
@@ -125,9 +202,8 @@ export default function AdminAlbums() {
       const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|avi)$/i.test(file.name);
       const mediaType = isVideo ? 'video' : 'image';
       const ext = file.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg');
-      const path = `${albumId}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
+      const path = `${editingAlbum.id}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
 
-      // Explicitly set contentType to prevent browser mismatch on video uploads
       let contentType = file.type;
       if (!contentType || contentType === 'application/octet-stream') {
         if (/\.mp4$/i.test(file.name)) contentType = 'video/mp4';
@@ -146,10 +222,10 @@ export default function AdminAlbums() {
 
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('album-photos').getPublicUrl(uploadData.path);
-      await albumsApi.addPhoto(albumId, { photo_url: publicUrl, caption: '', media_type: mediaType });
+      await albumsApi.addPhoto(editingAlbum.id, { photo_url: publicUrl, caption: '', media_type: mediaType });
       toast.success(isVideo ? 'Video added' : 'Photo added');
-      await loadAlbum(albumId);
-      load();
+      await reloadEditingAlbum(editingAlbum.id);
+      loadAlbums();
     } catch (uploadErr: any) {
       console.error('Media upload failed:', uploadErr);
       const msg = uploadErr?.message || uploadErr?.response?.data?.detail || '';
@@ -158,338 +234,580 @@ export default function AdminAlbums() {
       } else {
         toast.error(msg || 'Upload failed. Check Supabase storage bucket & RLS policies.');
       }
-    } finally { setUploading(false); }
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const handleDeletePhoto = async (albumId: string, photoId: string) => {
+  const handleDeleteMedia = async (photoId: string) => {
+    if (!editingAlbum) return;
+    if (!confirm('Are you sure you want to delete this media item?')) return;
     try {
-      await albumsApi.deletePhoto(albumId, photoId);
+      await albumsApi.deletePhoto(editingAlbum.id, photoId);
       toast.success('Media removed');
-      await loadAlbum(albumId);
-      load();
-    } catch { toast.error('Failed to remove'); }
+      await reloadEditingAlbum(editingAlbum.id);
+      loadAlbums();
+    } catch {
+      toast.error('Failed to remove media');
+    }
   };
 
   return (
     <AdminLayout>
-      <div className="p-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-gray-800">Albums</h1>
-            <p className="text-gray-500 text-sm mt-1">Manage photo albums from home visits.</p>
-          </div>
-          <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 bg-primary-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-primary-800 transition-colors">
-            <Plus className="w-4 h-4" /> New Album
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Album list */}
-          <div className="md:col-span-1 space-y-3">
-            {loading ? [...Array(4)].map((_, i) => <div key={i} className="h-20 bg-white rounded-xl animate-pulse" />) :
-              (!Array.isArray(albums) || albums.length === 0) ? <p className="text-gray-400 text-sm">No albums yet.</p> :
-              (Array.isArray(albums) ? albums : []).map(a => (
-                <button key={a.id} onClick={() => loadAlbum(a.id)}
-                  className={`w-full text-left p-4 rounded-xl border transition-all flex items-center justify-between ${selected?.id === a.id ? 'bg-primary-50 border-primary-300' : 'bg-white border-gray-100 hover:border-primary-200'}`}>
-                  <div>
-                    <p className="font-medium text-gray-800 text-sm">{a.home_name}</p>
-                    <p className="text-xs text-gray-400">{formatDate(a.visit_date)}</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </button>
-              ))
-            }
-          </div>
-
-          {/* Album detail */}
-          <div className="md:col-span-2">
-            {!selected ? (
-              <div className="bg-white rounded-2xl p-12 text-center text-gray-400 border border-gray-100">
-                <Camera className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                <p>Select an album to manage its photos</p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl p-6 border border-gray-100">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="font-display font-bold text-gray-800">{selected.home_name}</h3>
-                    <p className="text-xs text-gray-400">{formatDate(selected.visit_date)} · {(Array.isArray(selected.photos) ? selected.photos.length : 0)} photo{(Array.isArray(selected.photos) ? selected.photos.length : 0) !== 1 ? 's' : ''}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={openEdit} className="p-2 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-primary-50 transition-all" title="Edit details">
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleDeleteAlbum(selected.id)} className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all" title="Delete album">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Parsed description details */}
-                {(() => {
-                  const parsed = parseDescription(selected.description);
-                  const isLocUrl = parsed.location && /^https?:\/\//i.test(parsed.location.trim());
-                  const locMapUrl = parsed.location
-                    ? (isLocUrl ? parsed.location.trim() : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parsed.location.trim()).replace(/%20/g, '+')}`)
-                    : '';
-                  return (
-                    <div className="mb-4 text-xs bg-gray-50 p-4 rounded-xl space-y-1.5">
-                      {parsed.location && (
-                        <p className="text-gray-600 flex items-center gap-1.5 flex-wrap">
-                          <span>📍 <strong>Location:</strong></span>
-                          {!isLocUrl && <span>{parsed.location} ·</span>}
-                          <a href={locMapUrl} target="_blank" rel="noopener noreferrer" className="text-primary-700 hover:text-primary-900 hover:underline font-semibold inline-flex items-center gap-0.5">
-                            Open in Google Maps →
-                          </a>
-                        </p>
-                      )}
-                      {parsed.contact && <p className="text-gray-600">📞 <strong>Contact:</strong> {parsed.contact}</p>}
-                      {parsed.description && <p className="text-gray-700 mt-2 leading-relaxed whitespace-pre-line">{parsed.description}</p>}
-                    </div>
-                  );
-                })()}
-
-                {/* Upload area */}
-                <label className="block mb-4 cursor-pointer border-2 border-dashed border-primary-200 rounded-xl p-5 text-center hover:border-primary-400 hover:bg-primary-50/20 transition-all">
-                  <input
-                    type="file"
-                    accept="image/*,video/mp4,video/webm,video/quicktime,video/avi,.mp4,.mov,.webm,.avi"
-                    multiple
-                    className="hidden"
-                    onChange={async e => {
-                      const files = Array.from(e.target.files || []);
-                      for (const f of files) await handleMediaUpload(selected.id, f);
-                      if (e.target) e.target.value = '';
-                    }}
-                  />
-                  {uploading ? (
-                    <span className="flex items-center justify-center gap-2 text-primary-600 text-sm font-medium">
-                      <Loader2 className="w-4 h-4 animate-spin" /> Uploading media...
-                    </span>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center gap-1">
-                      <span className="text-primary-700 font-semibold text-sm">
-                        📷🎥 Add Photos & Videos
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        Supports Images (JPG, PNG, WEBP, GIF) & Videos (MP4, WEBM, MOV, AVI) up to 500MB
-                      </span>
-                    </div>
-                  )}
-                </label>
-
-                {/* Media grid */}
-                {(!Array.isArray(selected.photos) || selected.photos.length === 0) ? (
-                  <p className="text-center text-gray-400 text-sm py-6">No photos or videos yet</p>
-                ) : (
-                  <div className="grid grid-cols-3 gap-3">
-                    {(Array.isArray(selected.photos) ? selected.photos : []).map(p => {
-                      const isVid = p.media_type === 'video' || /\.(mp4|mov|webm)(\?.*)?$/i.test(p.photo_url);
-                      return (
-                        <div key={p.id} className="relative aspect-square rounded-xl overflow-hidden group bg-gray-900">
-                          {isVid ? (
-                            <>
-                              <video
-                                src={p.photo_url}
-                                className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
-                                preload="metadata"
-                                muted
-                                playsInline
-                              />
-                              <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 pointer-events-none">
-                                <span>▶</span> Video
-                              </div>
-                            </>
-                          ) : (
-                            <img src={p.photo_url} alt={p.caption || ''} className="w-full h-full object-cover" />
-                          )}
-                          <button
-                            onClick={() => handleDeletePhoto(selected.id, p.id)}
-                            className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full p-1 transition-opacity shadow-md hover:bg-red-600"
-                            title="Delete media"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Create album modal */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto" onClick={() => setShowCreate(false)}>
-          <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 w-full max-w-2xl shadow-2xl animate-[slide-up_0.25s_ease-out] my-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
-              <div>
-                <h3 className="font-display text-2xl font-bold text-gray-800">New Album</h3>
-                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Record a new home visit and add photo memories</p>
-              </div>
-              <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-100 transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-5 max-h-[72vh] overflow-y-auto pr-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Home Name *</label>
-                <input
-                  value={newAlbum.home_name}
-                  onChange={e => setNewAlbum(p => ({ ...p, home_name: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 transition-shadow"
-                  placeholder="e.g. Annai Orphanage & Old Age Home"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Visit Date *</label>
-                  <input
-                    type="date"
-                    value={newAlbum.visit_date}
-                    onChange={e => setNewAlbum(p => ({ ...p, visit_date: e.target.value }))}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 transition-shadow"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Location</label>
-                  <input
-                    value={newAlbum.location}
-                    onChange={e => setNewAlbum(p => ({ ...p, location: e.target.value }))}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 transition-shadow"
-                    placeholder="e.g. Tambaram, Chennai"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Contact Number</label>
-                <input
-                  value={newAlbum.contact_number}
-                  onChange={e => setNewAlbum(p => ({ ...p, contact_number: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 transition-shadow"
-                  placeholder="e.g. +91 98765 43210"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
-                <textarea
-                  rows={5}
-                  value={newAlbum.description}
-                  onChange={e => setNewAlbum(p => ({ ...p, description: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 leading-relaxed transition-shadow"
-                  placeholder="Write a detailed description of the visit, needs identified, interactions with the residents, and items distributed..."
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 mt-7 pt-4 border-t border-gray-100">
-              <button
-                onClick={() => setShowCreate(false)}
-                className="px-5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreate}
-                disabled={creating}
-                className="bg-primary-700 text-white px-6 py-2.5 rounded-xl font-medium text-sm hover:bg-primary-800 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm"
-              >
-                {creating ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating...</> : 'Create Album'}
-              </button>
-            </div>
+      {loadingEdit && (
+        <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-xs flex items-center justify-center">
+          <div className="bg-white rounded-2xl px-6 py-4 shadow-xl flex items-center gap-3 text-primary-700">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span className="font-semibold text-sm">Opening album...</span>
           </div>
         </div>
       )}
-
-      {/* Edit album modal */}
-      {showEdit && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto" onClick={() => setShowEdit(false)}>
-          <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 w-full max-w-2xl shadow-2xl animate-[slide-up_0.25s_ease-out] my-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
-              <div>
-                <h3 className="font-display text-2xl font-bold text-gray-800">Edit Album Details</h3>
-                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Update visit information and contact details</p>
+      <div className="p-6 sm:p-8 max-w-7xl mx-auto">
+        {/* ==================================================== */}
+        {/* SCREEN 1: EDIT ALBUM (SETTINGS-PAGE STYLE) */}
+        {/* ==================================================== */}
+        {editingAlbum ? (
+          <div className="space-y-8 animate-[fade-in_0.2s_ease-out]">
+            {/* Top Bar with Back navigation & Quick links */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setEditingAlbum(null)}
+                  className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:text-primary-700 hover:border-primary-300 hover:bg-primary-50 transition-all shadow-xs"
+                  title="Back to all albums"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary-600 bg-primary-50 px-2.5 py-0.5 rounded-full">
+                      Edit Album
+                    </span>
+                    <span className="text-xs text-gray-400">· {editingAlbum.photos?.length || 0} media items</span>
+                  </div>
+                  <h1 className="font-display text-2xl sm:text-3xl font-bold text-gray-900 mt-1">
+                    {editingAlbum.home_name}
+                  </h1>
+                </div>
               </div>
-              <button onClick={() => setShowEdit(false)} className="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-100 transition-colors">
+
+              <div className="flex items-center gap-2 sm:self-center">
+                <Link
+                  to={`/albums/${editingAlbum.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:text-primary-700 text-sm font-medium hover:bg-gray-50 transition-all shadow-xs"
+                >
+                  <ExternalLink className="w-4 h-4" /> View on Site
+                </Link>
+                <button
+                  onClick={() => handleDeleteAlbum(editingAlbum.id, editingAlbum.home_name)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 text-sm font-medium transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" /> Delete Album
+                </button>
+              </div>
+            </div>
+
+            {/* FORM CARD: ALBUM DETAILS (Settings page style) */}
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-6">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                <div>
+                  <h2 className="font-display text-xl font-bold text-gray-800">Album Information</h2>
+                  <p className="text-gray-500 text-xs sm:text-sm mt-0.5">
+                    Update the home name, visit date, location, contact, and description.
+                  </p>
+                </div>
+                <button
+                  onClick={handleSaveDetails}
+                  disabled={savingDetails}
+                  className="inline-flex items-center gap-2 bg-primary-700 hover:bg-primary-800 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-xs disabled:opacity-60"
+                >
+                  {savingDetails ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  {savingDetails ? 'Saving Changes...' : 'Save Changes'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
+                    Home Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.home_name}
+                    onChange={e => setEditForm(prev => ({ ...prev, home_name: e.target.value }))}
+                    placeholder="e.g. Hope Children's Home"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-sm transition-all text-gray-800 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
+                    Visit Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editForm.visit_date}
+                    onChange={e => setEditForm(prev => ({ ...prev, visit_date: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-sm transition-all text-gray-800 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
+                    Location (Place or Google Maps link)
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.location}
+                    onChange={e => setEditForm(prev => ({ ...prev, location: e.target.value }))}
+                    placeholder="e.g. Chennai, Tamil Nadu or https://maps.app.goo.gl/..."
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-sm transition-all"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Only shown inside the album detail page (not on album cards).
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
+                    Contact Number (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.contact_number}
+                    onChange={e => setEditForm(prev => ({ ...prev, contact_number: e.target.value }))}
+                    placeholder="e.g. +91 98765 43210"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-sm transition-all"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
+                    Description / Bio
+                  </label>
+                  <textarea
+                    rows={5}
+                    value={editForm.description}
+                    onChange={e => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Share notes, the story of the visit, needs identified, or children/elderly count..."
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-sm transition-all leading-relaxed"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    This description/bio appears cleanly on the album cards on the public Albums page.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={handleSaveDetails}
+                  disabled={savingDetails}
+                  className="inline-flex items-center gap-2 bg-primary-700 hover:bg-primary-800 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-xs disabled:opacity-60"
+                >
+                  {savingDetails ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  {savingDetails ? 'Saving Changes...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+
+            {/* SECTION 2: PHOTO & VIDEO MANAGEMENT (Grid with Cover Photo Selection) */}
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-4">
+                <div>
+                  <h2 className="font-display text-xl font-bold text-gray-800">Photos & Videos</h2>
+                  <p className="text-gray-500 text-xs sm:text-sm mt-0.5">
+                    Click "Set as Cover" on any photo to choose the primary album cover image.
+                  </p>
+                </div>
+                <span className="text-xs font-medium bg-gray-100 text-gray-600 px-3 py-1 rounded-full self-start sm:self-auto">
+                  {editingAlbum.photos?.length || 0} media file{editingAlbum.photos?.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+
+              {/* Upload area */}
+              <label className="block cursor-pointer border-2 border-dashed border-primary-200 hover:border-primary-400 hover:bg-primary-50/30 rounded-2xl p-6 sm:p-8 text-center transition-all">
+                <input
+                  type="file"
+                  accept="image/*,video/mp4,video/webm,video/quicktime,video/avi,.mp4,.mov,.webm,.avi"
+                  multiple
+                  className="hidden"
+                  onChange={async e => {
+                    const files = Array.from(e.target.files || []);
+                    for (const f of files) await handleMediaUpload(f);
+                    if (e.target) e.target.value = '';
+                  }}
+                />
+                {uploading ? (
+                  <div className="flex flex-col items-center justify-center gap-2 text-primary-700">
+                    <Loader2 className="w-8 h-8 animate-spin" />
+                    <span className="font-semibold text-sm">Uploading media files...</span>
+                    <span className="text-xs text-gray-400">Please wait while files are safely stored</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-2 text-primary-700">
+                    <div className="w-12 h-12 rounded-2xl bg-primary-100/60 flex items-center justify-center text-primary-700">
+                      <Camera className="w-6 h-6" />
+                    </div>
+                    <span className="font-semibold text-base">📷🎥 Click or Drag to Add Photos & Videos</span>
+                    <span className="text-xs text-gray-400 max-w-md">
+                      Supports JPG, PNG, WEBP, GIF, MP4, MOV, WEBM, AVI (up to 500MB each)
+                    </span>
+                  </div>
+                )}
+              </label>
+
+              {/* Media Grid */}
+              {(!editingAlbum.photos || editingAlbum.photos.length === 0) ? (
+                <div className="text-center py-16 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200 text-gray-400">
+                  <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm font-medium">No photos or videos in this album yet.</p>
+                  <p className="text-xs text-gray-400 mt-1">Upload images or videos above to build the visit gallery.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {editingAlbum.photos.map(photo => {
+                    const isVideo = photo.media_type === 'video' || /\.(mp4|mov|webm|avi)(\?.*)?$/i.test(photo.photo_url);
+                    const isCurrentCover = editingAlbum.cover_photo_url === photo.photo_url;
+
+                    return (
+                      <div
+                        key={photo.id}
+                        className={`group relative aspect-square rounded-2xl overflow-hidden shadow-xs border transition-all ${
+                          isCurrentCover
+                            ? 'ring-3 ring-emerald-500 border-emerald-500 shadow-md'
+                            : 'border-gray-200 hover:shadow-md bg-gray-900'
+                        }`}
+                      >
+                        {/* Media content */}
+                        {isVideo ? (
+                          <>
+                            <video
+                              src={photo.photo_url}
+                              className="w-full h-full object-cover"
+                              preload="metadata"
+                              muted
+                              playsInline
+                            />
+                            <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-xs text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 pointer-events-none">
+                              <span>▶</span> Video
+                            </div>
+                          </>
+                        ) : (
+                          <img
+                            src={photo.photo_url}
+                            alt={photo.caption || ''}
+                            className="w-full h-full object-cover"
+                          />
+                        )}
+
+                        {/* Top-Left: Cover Badge OR Set as Cover Button */}
+                        <div className="absolute top-2 left-2 z-10">
+                          {isCurrentCover ? (
+                            <span className="inline-flex items-center gap-1 bg-emerald-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-md">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Cover
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleSetCover(photo.photo_url)}
+                              className="inline-flex items-center gap-1 bg-black/60 hover:bg-emerald-600 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-xs shadow-md opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                              title="Set as album cover photo"
+                            >
+                              <Check className="w-3 h-3" /> Set as Cover
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Top-Right: Delete Media Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMedia(photo.id)}
+                          className="absolute top-2 right-2 z-10 bg-red-600/90 hover:bg-red-600 text-white p-1.5 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                          title="Delete media"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* ==================================================== */
+          /* SCREEN 2: ALL ALBUMS LIST / TABLE                    */
+          /* ==================================================== */
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 className="font-display text-3xl font-bold text-gray-800">Albums</h1>
+                <p className="text-gray-500 text-sm mt-1">
+                  Manage visit galleries, update details, and choose custom cover photos.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCreate(true)}
+                className="inline-flex items-center gap-2 bg-primary-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-800 transition-colors shadow-xs self-start sm:self-auto"
+              >
+                <Plus className="w-4 h-4" /> New Album
+              </button>
+            </div>
+
+            {/* Table Card (Settings Page aesthetic) */}
+            <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+              {loading ? (
+                <div className="p-8 space-y-4">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                  ))}
+                </div>
+              ) : albums.length === 0 ? (
+                <div className="text-center py-20 text-gray-400">
+                  <Camera className="w-16 h-16 mx-auto mb-3 opacity-20" />
+                  <p className="text-base font-medium">No albums created yet</p>
+                  <p className="text-xs text-gray-400 mt-1">Click "+ New Album" to record your first visit.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-100 bg-gray-50/75 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                        <th className="py-3.5 px-5">Cover</th>
+                        <th className="py-3.5 px-4">Home Name</th>
+                        <th className="py-3.5 px-4">Visit Date</th>
+                        <th className="py-3.5 px-4">Location</th>
+                        <th className="py-3.5 px-4">Description</th>
+                        <th className="py-3.5 px-5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-sm">
+                      {albums.map(album => {
+                        const parsed = parseAlbumDescription(album.description);
+                        const isLocUrl = parsed.location && /^https?:\/\//i.test(parsed.location.trim());
+                        const locMapUrl = parsed.location
+                          ? (isLocUrl
+                              ? parsed.location.trim()
+                              : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                  parsed.location.trim()
+                                ).replace(/%20/g, '+')}`)
+                          : '';
+
+                        return (
+                          <tr key={album.id} className="hover:bg-primary-50/30 transition-colors group">
+                            {/* Cover Thumbnail */}
+                            <td className="py-3.5 px-5">
+                              <div className="w-14 h-14 rounded-xl overflow-hidden bg-primary-100 border border-primary-200 flex-shrink-0 flex items-center justify-center">
+                                {album.cover_photo_url ? (
+                                  <img
+                                    src={album.cover_photo_url}
+                                    alt={album.home_name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <Camera className="w-5 h-5 text-primary-400 opacity-60" />
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Home Name */}
+                            <td className="py-3.5 px-4 font-semibold text-gray-900">
+                              <button
+                                onClick={() => openEdit(album.id)}
+                                className="text-left hover:text-primary-700 transition-colors hover:underline font-display text-base"
+                              >
+                                {album.home_name}
+                              </button>
+                            </td>
+
+                            {/* Visit Date */}
+                            <td className="py-3.5 px-4 text-gray-600 whitespace-nowrap text-xs sm:text-sm">
+                              {formatDate(album.visit_date)}
+                            </td>
+
+                            {/* Location */}
+                            <td className="py-3.5 px-4 text-gray-600 text-xs sm:text-sm max-w-xs">
+                              {parsed.location ? (
+                                <a
+                                  href={locMapUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary-700 hover:underline inline-flex items-center gap-1 font-medium truncate max-w-[200px]"
+                                  title={parsed.location}
+                                >
+                                  <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-primary-500" />
+                                  <span className="truncate">{parsed.location}</span>
+                                </a>
+                              ) : (
+                                <span className="text-gray-300">—</span>
+                              )}
+                            </td>
+
+                            {/* Description / Bio Preview */}
+                            <td className="py-3.5 px-4 text-gray-500 text-xs max-w-xs truncate">
+                              {parsed.description ? (
+                                <span className="line-clamp-1" title={parsed.description}>
+                                  {parsed.description}
+                                </span>
+                              ) : (
+                                <span className="text-gray-300 italic">No description</span>
+                              )}
+                            </td>
+
+                            {/* Actions */}
+                            <td className="py-3.5 px-5 text-right whitespace-nowrap">
+                              <div className="inline-flex items-center gap-2">
+                                <button
+                                  onClick={() => openEdit(album.id)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 font-semibold text-xs transition-colors shadow-2xs"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" /> Edit
+                                </button>
+                                <Link
+                                  to={`/albums/${album.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1.5 text-gray-400 hover:text-primary-700 rounded-lg hover:bg-gray-100 transition-colors"
+                                  title="View album on public site"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                </Link>
+                                <button
+                                  onClick={() => handleDeleteAlbum(album.id, album.home_name)}
+                                  className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                                  title="Delete album"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ==================================================== */}
+      {/* MODAL: CREATE NEW ALBUM                              */}
+      {/* ==================================================== */}
+      {showCreate && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+          onClick={() => setShowCreate(false)}
+        >
+          <div
+            className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 w-full max-w-2xl shadow-2xl animate-[slide-up_0.25s_ease-out] my-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6 pb-3 border-b border-gray-100">
+              <div>
+                <h3 className="font-display text-2xl font-bold text-gray-800">New Album</h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                  Record a new home visit and add photo & video memories
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCreate(false)}
+                className="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-100 transition-colors"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-5 max-h-[72vh] overflow-y-auto pr-2">
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Home Name *</label>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Home Name <span className="text-red-500">*</span>
+                </label>
                 <input
-                  value={editAlbum.home_name}
-                  onChange={e => setEditAlbum(p => ({ ...p, home_name: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 transition-shadow"
-                  placeholder="Name of the home visited"
+                  type="text"
+                  placeholder="e.g. Hope Children's Home"
+                  value={newAlbum.home_name}
+                  onChange={e => setNewAlbum(p => ({ ...p, home_name: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-sm transition-all"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Visit Date *</label>
-                  <input
-                    type="date"
-                    value={editAlbum.visit_date}
-                    onChange={e => setEditAlbum(p => ({ ...p, visit_date: e.target.value }))}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 transition-shadow"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Location</label>
-                  <input
-                    value={editAlbum.location}
-                    onChange={e => setEditAlbum(p => ({ ...p, location: e.target.value }))}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 transition-shadow"
-                    placeholder="e.g. Chennai, Tamil Nadu"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Visit Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={newAlbum.visit_date}
+                  onChange={e => setNewAlbum(p => ({ ...p, visit_date: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-sm transition-all"
+                />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Contact Number</label>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Location (Address or Google Maps link)
+                </label>
                 <input
-                  value={editAlbum.contact_number}
-                  onChange={e => setEditAlbum(p => ({ ...p, contact_number: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 transition-shadow"
+                  type="text"
+                  placeholder="e.g. Chennai, Tamil Nadu or Google Maps link"
+                  value={newAlbum.location}
+                  onChange={e => setNewAlbum(p => ({ ...p, location: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-sm transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Contact Number (Optional)
+                </label>
+                <input
+                  type="text"
                   placeholder="e.g. +91 98765 43210"
+                  value={newAlbum.contact_number}
+                  onChange={e => setNewAlbum(p => ({ ...p, contact_number: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-sm transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Description / Bio
+                </label>
                 <textarea
-                  rows={5}
-                  value={editAlbum.description}
-                  onChange={e => setEditAlbum(p => ({ ...p, description: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm sm:text-base text-gray-800 leading-relaxed transition-shadow"
-                  placeholder="Brief description of the visit..."
+                  rows={4}
+                  placeholder="Notes about the visit, stories, children/elderly count..."
+                  value={newAlbum.description}
+                  onChange={e => setNewAlbum(p => ({ ...p, description: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-sm transition-all leading-relaxed"
                 />
               </div>
-            </div>
 
-            <div className="flex items-center justify-end gap-3 mt-7 pt-4 border-t border-gray-100">
-              <button
-                onClick={() => setShowEdit(false)}
-                className="px-5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleEdit}
-                disabled={savingDetails}
-                className="bg-primary-700 text-white px-6 py-2.5 rounded-xl font-medium text-sm hover:bg-primary-800 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm"
-              >
-                {savingDetails ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : 'Save Changes'}
-              </button>
+              <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setShowCreate(false)}
+                  className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  disabled={creating}
+                  className="inline-flex items-center gap-2 bg-primary-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-800 transition-colors shadow-xs disabled:opacity-60"
+                >
+                  {creating && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {creating ? 'Creating Album...' : 'Create Album'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

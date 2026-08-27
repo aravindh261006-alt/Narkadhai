@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Camera, ArrowRight } from 'lucide-react';
 import { albumsApi } from '../lib/api';
-import { formatDate } from '../lib/utils';
+import { formatDate, parseAlbumDescription } from '../lib/utils';
 import type { Album } from '../types';
 
 export default function AlbumsPage() {
@@ -48,41 +48,44 @@ export default function AlbumsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {safeAlbums.map(album => (
-            <Link
-              key={album.id}
-              to={`/albums/${album.id}`}
-              className="group block bg-white rounded-2xl overflow-hidden shadow-sm border border-primary-100 card-hover"
-            >
-              <div className="h-56 bg-gradient-to-br from-primary-100 to-primary-200 overflow-hidden relative">
-                {album.cover_photo_url ? (
-                  <img
-                    src={album.cover_photo_url}
-                    alt={album.home_name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-primary-300">
-                    <Camera className="w-14 h-14 mb-2" />
-                    <span className="text-sm">No cover photo</span>
+          {safeAlbums.map(album => {
+            const cleanDesc = parseAlbumDescription(album.description).description;
+            return (
+              <Link
+                key={album.id}
+                to={`/albums/${album.id}`}
+                className="group block bg-white rounded-2xl overflow-hidden shadow-sm border border-primary-100 card-hover"
+              >
+                <div className="h-56 bg-gradient-to-br from-primary-100 to-primary-200 overflow-hidden relative">
+                  {album.cover_photo_url ? (
+                    <img
+                      src={album.cover_photo_url}
+                      alt={album.home_name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-primary-300">
+                      <Camera className="w-14 h-14 mb-2" />
+                      <span className="text-sm">No cover photo</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
+                    <span className="flex items-center gap-1 bg-white/90 text-primary-700 px-3 py-1 rounded-full text-xs font-medium">
+                      View <ArrowRight className="w-3 h-3" />
+                    </span>
                   </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
-                  <span className="flex items-center gap-1 bg-white/90 text-primary-700 px-3 py-1 rounded-full text-xs font-medium">
-                    View <ArrowRight className="w-3 h-3" />
-                  </span>
                 </div>
-              </div>
-              <div className="p-5">
-                <h3 className="font-display text-lg font-bold text-primary-800 mb-1">{album.home_name}</h3>
-                <p className="text-xs text-amber-600 font-medium mb-2">📅 {formatDate(album.visit_date)}</p>
-                {album.description && (
-                  <p className="text-gray-500 text-sm leading-relaxed line-clamp-3">{album.description}</p>
-                )}
-              </div>
-            </Link>
-          ))}
+                <div className="p-5">
+                  <h3 className="font-display text-lg font-bold text-primary-800 mb-1">{album.home_name}</h3>
+                  <p className="text-xs text-amber-600 font-medium mb-2">{formatDate(album.visit_date)}</p>
+                  {cleanDesc && (
+                    <p className="text-gray-500 text-sm leading-relaxed line-clamp-3">{cleanDesc}</p>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
