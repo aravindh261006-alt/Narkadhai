@@ -81,6 +81,7 @@ create table if not exists public.settings (
 insert into public.settings (key, value) values
   ('donation_target_amount', '100000'),
   ('qr_code_url', ''),
+  ('qr_code_label_1', 'Primary QR'),
   ('qr_code_url_2', ''),
   ('qr_code_label_2', 'Backup QR'),
   ('instagram_url', 'https://www.instagram.com/narkadhai'),

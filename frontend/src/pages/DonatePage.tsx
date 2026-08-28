@@ -104,11 +104,18 @@ export default function DonatePage() {
               <h2 className="font-display text-2xl font-bold text-primary-800 mb-2">Scan & Pay via UPI</h2>
               <p className="text-gray-500 text-sm mb-6">Use any UPI app — GPay, PhonePe, Paytm, etc.</p>
               {settings.qr_code_url ? (
-                <img
-                  src={settings.qr_code_url}
-                  alt="UPI QR Code for Narkadhai donations"
-                  className="max-w-[240px] mx-auto rounded-xl shadow-md border border-gray-100"
-                />
+                <div>
+                  <img
+                    src={settings.qr_code_url}
+                    alt={settings.qr_code_label_1 || "UPI QR Code for Narkadhai donations"}
+                    className={`max-w-[240px] mx-auto rounded-xl shadow-md border border-gray-100${settings.qr_code_label_1 ? ' mb-3' : ''}`}
+                  />
+                  {settings.qr_code_label_1 && (
+                    <p className="inline-block bg-primary-100 text-primary-900 text-xs font-bold px-3 py-1 rounded-full">
+                      {settings.qr_code_label_1}
+                    </p>
+                  )}
+                </div>
               ) : (
                 <div className="w-[240px] h-[240px] mx-auto bg-gray-100 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-gray-300">
                   <QrCode className="w-12 h-12 text-gray-400 mb-2" />
@@ -219,7 +226,13 @@ export default function DonatePage() {
                       className="w-4 h-4 text-primary-700 focus:ring-primary-500 border-gray-300"
                     />
                     <div>
-                      <span className="text-sm font-semibold text-gray-800 block">Primary QR</span>
+                      <span className="text-sm font-semibold text-gray-800 block">
+                        {settings.qr_code_label_1
+                          ? (settings.qr_code_label_1.toLowerCase().startsWith('primary')
+                              ? settings.qr_code_label_1
+                              : `Primary QR (${settings.qr_code_label_1})`)
+                          : 'Primary QR'}
+                      </span>
                       <span className="text-xs text-gray-400">Main payment QR code</span>
                     </div>
                   </label>
@@ -234,7 +247,11 @@ export default function DonatePage() {
                       />
                       <div>
                         <span className="text-sm font-semibold text-gray-800 block">
-                          Backup QR {settings.qr_code_label_2 ? `(${settings.qr_code_label_2})` : ''}
+                          {settings.qr_code_label_2
+                            ? (settings.qr_code_label_2.toLowerCase().startsWith('backup')
+                                ? settings.qr_code_label_2
+                               : `Backup QR (${settings.qr_code_label_2})`)
+                            : 'Backup QR'}
                         </span>
                         <span className="text-xs text-amber-600">Secondary QR code</span>
                       </div>

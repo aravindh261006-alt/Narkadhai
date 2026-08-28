@@ -601,7 +601,7 @@ class TestAdminEndpoints(unittest.TestCase):
 
     @patch("app.routers.settings_router.get_supabase")
     def test_backup_qr_settings_allowed(self, mock_get_db):
-        """Test that qr_code_url_2 and qr_code_label_2 can be updated by owner."""
+        """Test that qr_code_url_2, qr_code_label_1 and qr_code_label_2 can be updated by owner."""
         app.dependency_overrides[require_owner] = mock_owner_admin
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
@@ -609,6 +609,7 @@ class TestAdminEndpoints(unittest.TestCase):
         resp = client.put(
             "/api/settings",
             json={"updates": {
+                "qr_code_label_1": "Primary QR (GPay)",
                 "qr_code_url_2": "https://example.com/backup-qr.png",
                 "qr_code_label_2": "PhonePe QR",
             }},

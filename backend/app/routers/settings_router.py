@@ -15,6 +15,7 @@ router = APIRouter()
 PUBLIC_KEYS = {
     "donation_target_amount",
     "qr_code_url",
+    "qr_code_label_1",
     "qr_code_url_2",
     "qr_code_label_2",
     "instagram_url",

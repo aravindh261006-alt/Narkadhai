@@ -26,6 +26,7 @@ export default function AdminSettings() {
   const [uploadingQr, setUploadingQr] = useState(false);
   const [qrFile2, setQrFile2] = useState<File | null>(null);
   const [uploadingQr2, setUploadingQr2] = useState(false);
+  const [savingLabel1, setSavingLabel1] = useState(false);
   const [savingLabel2, setSavingLabel2] = useState(false);
 
   useEffect(() => {
@@ -104,6 +105,18 @@ export default function AdminSettings() {
     }
   };
 
+  const handleSaveLabel1 = async () => {
+    setSavingLabel1(true);
+    try {
+      await settingsApi.update({ qr_code_label_1: settings.qr_code_label_1 || '' });
+      toast.success('Primary QR label saved!');
+    } catch (err: any) {
+      toast.error('Failed to save label');
+    } finally {
+      setSavingLabel1(false);
+    }
+  };
+
   const handleSaveLabel2 = async () => {
     setSavingLabel2(true);
     try {
@@ -174,6 +187,32 @@ export default function AdminSettings() {
                 <h3 className="font-semibold text-gray-800">Primary Payment QR</h3>
               </div>
               <p className="text-xs text-gray-500 mb-4">Main QR code displayed on the donation page.</p>
+
+              {/* Primary QR Label / Name */}
+              <div className="mb-4">
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                  PRIMARY QR LABEL / NAME
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={settings.qr_code_label_1 || ''}
+                    onChange={e => setSettings(p => ({ ...p, qr_code_label_1: e.target.value }))}
+                    placeholder="e.g. Primary QR (GPay)"
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm"
+                  />
+                  <button
+                    onClick={handleSaveLabel1}
+                    disabled={savingLabel1}
+                    className="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-colors disabled:opacity-50"
+                  >
+                    {savingLabel1 ? '...' : 'Save'}
+                  </button>
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Shown as the option name (e.g. "Primary QR (GPay)")
+                </p>
+              </div>
 
               {settings.qr_code_url ? (
                 <img src={settings.qr_code_url} alt="Current QR" className="w-full max-w-[200px] mx-auto rounded-xl border border-gray-100 mb-4 shadow-xs" />

@@ -58,6 +58,7 @@ export interface DonationTotals {
 export interface Settings {
   donation_target_amount?: string;
   qr_code_url?: string;
+  qr_code_label_1?: string;
   qr_code_url_2?: string;
   qr_code_label_2?: string;
   instagram_url?: string;
