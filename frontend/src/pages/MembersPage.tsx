@@ -157,7 +157,7 @@ export default function MembersPage() {
               <div className="mt-6">
                 <button
                   onClick={() => setSelectedMember(null)}
-                  className="w-full bg-primary-700 hover:bg-primary-800 text-white font-semibold py-3 rounded-xl transition-all shadow-md"
+                  className="w-full bg-[#D4A017] hover:bg-[#b88510] text-[#2C1810] font-bold py-3 rounded-xl transition-all shadow-md shadow-[#D4A017]/20"
                 >
                   Close
                 </button>

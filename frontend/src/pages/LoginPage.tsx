@@ -96,8 +96,8 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps = {}) {
     <div className="min-h-screen bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md animate-[slide-up_0.6s_ease-out]">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-700/20">
-            <Heart className="w-7 h-7 text-amber-400 fill-amber-400" />
+          <div className="w-14 h-14 bg-[#D4A017] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#D4A017]/25">
+            <Heart className="w-7 h-7 text-[#2C1810] fill-[#2C1810]" />
           </div>
           <h1 className="font-display text-3xl font-bold text-primary-800">
             {mode === 'forgot' ? 'Reset Password' : 'Admin Login'}
@@ -187,11 +187,11 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps = {}) {
               type="submit"
               disabled={loading}
               id="login-submit"
-              className="w-full bg-primary-700 hover:bg-primary-800 text-white py-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-primary-700/20"
+              className="w-full bg-[#D4A017] hover:bg-[#b88510] text-[#2C1810] py-4 rounded-xl font-bold text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-[#D4A017]/25"
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin text-[#2C1810]" />
                   {mode === 'forgot' ? 'Sending reset link...' : 'Logging in...'}
                 </>
               ) : mode === 'forgot' ? (

@@ -109,9 +109,9 @@ export default function ContactPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-primary-700 hover:bg-primary-800 text-white py-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                  className="w-full bg-[#D4A017] hover:bg-[#b88510] text-[#2C1810] py-4 rounded-xl font-bold text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-md shadow-[#D4A017]/20"
                 >
-                  {isSubmitting ? <><Loader2 className="w-5 h-5 animate-spin" /> Sending...</> : 'Send Message'}
+                  {isSubmitting ? <><Loader2 className="w-5 h-5 animate-spin text-[#2C1810]" /> Sending...</> : 'Send Message'}
                 </button>
               </form>
             </>

@@ -135,7 +135,7 @@ export default function AlbumDetailPage() {
         <Camera className="w-16 h-16 text-gray-300 mx-auto mb-4" />
         <h2 className="font-display text-2xl text-gray-700 font-bold mb-2">Album not found</h2>
         <p className="text-gray-500 mb-6">The requested album could not be found or has been removed.</p>
-        <Link to="/albums" className="inline-flex items-center gap-2 bg-primary-700 hover:bg-primary-800 text-white font-medium px-5 py-2.5 rounded-xl transition-colors">
+        <Link to="/albums" className="inline-flex items-center gap-2 bg-[#D4A017] hover:bg-[#b88510] text-[#2C1810] font-bold px-5 py-2.5 rounded-xl transition-all shadow-sm">
           <ArrowLeft className="w-4 h-4" /> Back to Albums
         </Link>
       </div>

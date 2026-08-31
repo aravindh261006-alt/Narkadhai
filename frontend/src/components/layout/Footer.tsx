@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Heart, Mail } from 'lucide-react';
+import { Mail } from 'lucide-react';
+import Logo from './Logo';
 
 function InstagramIcon({ className }: { className?: string }) {
   return (
@@ -30,7 +31,7 @@ export default function Footer() {
   };
 
   return (
-    <footer className="bg-primary-900 text-white mt-20">
+    <footer className="bg-[#2C1810] text-[#FDFAF5] border-t border-[#D4A017]/20 mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Brand */}
@@ -38,21 +39,18 @@ export default function Footer() {
             <Link
               to="/"
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="flex items-center gap-2 mb-4 group w-fit"
+              className="inline-flex items-center mb-4 group"
             >
-              <div className="w-8 h-8 rounded-full bg-primary-700 border border-amber-400/30 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Heart className="w-4 h-4 text-amber-400 fill-amber-400" />
-              </div>
-              <span className="font-display text-xl font-bold">Narkadhai</span>
+              <Logo size="md" inverted={true} />
             </Link>
-            <p className="text-primary-300 text-sm leading-relaxed">
+            <p className="text-[#FDFAF5]/70 text-sm leading-relaxed max-w-sm">
               An initiative connecting hearts with homes. Visiting, caring, and supporting — one step at a time.
             </p>
           </div>
 
           {/* Quick links with navbar-matching active highlight */}
           <div>
-            <h3 className="font-semibold text-white mb-3 text-sm uppercase tracking-wider">Pages</h3>
+            <h3 className="font-semibold text-[#D4A017] mb-3 text-xs uppercase tracking-widest">Pages</h3>
             <ul className="space-y-1.5">
               {footerNavLinks.map(link => {
                 const active = isLinkActive(link.to);
@@ -63,8 +61,8 @@ export default function Footer() {
                       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                       className={`inline-block px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                         active
-                          ? 'bg-primary-100 text-primary-800 font-semibold shadow-sm'
-                          : 'text-primary-300 hover:text-white hover:bg-primary-800/60'
+                          ? 'bg-[#D4A017] text-[#2C1810] font-bold shadow-xs'
+                          : 'text-[#FDFAF5]/80 hover:text-[#D4A017] hover:bg-white/5'
                       }`}
                     >
                       {link.label}
@@ -77,23 +75,23 @@ export default function Footer() {
 
           {/* Contact */}
           <div>
-            <h3 className="font-semibold text-white mb-3 text-sm uppercase tracking-wider">Connect</h3>
+            <h3 className="font-semibold text-[#D4A017] mb-3 text-xs uppercase tracking-widest">Connect</h3>
             <div className="space-y-2">
               <a
                 href="https://www.instagram.com/narkadhai"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-primary-300 hover:text-white hover:bg-primary-800/60 text-sm transition-all"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[#FDFAF5]/80 hover:text-[#D4A017] hover:bg-white/5 text-sm transition-all"
               >
-                <InstagramIcon className="w-4 h-4" />
+                <InstagramIcon className="w-4 h-4 text-[#D4A017]" />
                 @narkadhai
               </a>
               <div>
                 <a
                   href="mailto:support.narkadhai@gmail.com"
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-primary-300 hover:text-white hover:bg-primary-800/60 text-sm transition-all"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[#FDFAF5]/80 hover:text-[#D4A017] hover:bg-white/5 text-sm transition-all"
                 >
-                  <Mail className="w-4 h-4" />
+                  <Mail className="w-4 h-4 text-[#D4A017]" />
                   support.narkadhai@gmail.com
                 </a>
               </div>
@@ -101,8 +99,8 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-primary-800 mt-8 pt-8 flex items-center justify-center text-center">
-          <p className="text-primary-400 text-xs">
+        <div className="border-t border-[#D4A017]/15 mt-8 pt-8 flex items-center justify-center text-center">
+          <p className="text-[#FDFAF5]/50 text-xs">
             © {new Date().getFullYear()} Narkadhai. All rights reserved.
           </p>
         </div>

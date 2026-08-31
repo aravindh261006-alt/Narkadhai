@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
-import { Menu, X, Heart } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
+import Logo from './Logo';
 
 const navLinks = [
   { to: '/', label: 'Home' },
@@ -16,40 +17,45 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
 
+  const isLinkActive = (to: string) => {
+    if (to === '/') return location.pathname === '/';
+    return location.pathname.startsWith(to);
+  };
+
   return (
-    <nav className="sticky top-0 z-50 glass border-b border-white/30 shadow-sm">
+    <nav className="sticky top-0 z-50 bg-[#2C1810] border-b border-[#D4A017]/20 shadow-md text-[#FDFAF5]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 rounded-full bg-primary-700 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Heart className="w-5 h-5 text-amber-400 fill-amber-400" />
-            </div>
-            <span className="font-display text-xl font-bold text-primary-800">Narkadhai</span>
+          <Link to="/" className="group flex items-center">
+            <Logo size="md" inverted={true} />
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-1">
-            {navLinks.map(link => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                  link.highlight
-                    ? 'bg-primary-700 text-white hover:bg-primary-800 px-4'
-                    : location.pathname === link.to
-                    ? 'bg-primary-100 text-primary-800'
-                    : 'text-primary-700 hover:bg-primary-50 hover:text-primary-800'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+          <div className="hidden md:flex items-center gap-1.5">
+            {navLinks.map(link => {
+              const active = isLinkActive(link.to);
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
+                    link.highlight
+                      ? 'bg-[#D4A017] text-[#2C1810] font-bold hover:bg-[#b88510] shadow-sm ml-2'
+                      : active
+                      ? 'text-[#D4A017] bg-[#D4A017]/15 font-semibold'
+                      : 'text-[#FDFAF5]/85 hover:text-[#D4A017] hover:bg-white/5'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
           </div>
 
           {/* Mobile hamburger */}
           <button
-            className="md:hidden p-2 rounded-lg text-primary-700 hover:bg-primary-50"
+            className="md:hidden p-2 rounded-lg text-[#FDFAF5] hover:text-[#D4A017] hover:bg-white/5 transition-colors"
             onClick={() => setOpen(!open)}
             aria-label="Toggle menu"
           >
@@ -60,23 +66,26 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {open && (
-        <div className="md:hidden border-t border-white/30 bg-white/90 backdrop-blur-md px-4 py-4 space-y-1">
-          {navLinks.map(link => (
-            <Link
-              key={link.to}
-              to={link.to}
-              onClick={() => setOpen(false)}
-              className={`block px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                link.highlight
-                  ? 'bg-primary-700 text-white'
-                  : location.pathname === link.to
-                  ? 'bg-primary-100 text-primary-800'
-                  : 'text-primary-700 hover:bg-primary-50'
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
+        <div className="md:hidden border-t border-[#D4A017]/20 bg-[#2C1810] px-4 py-4 space-y-1.5 shadow-xl">
+          {navLinks.map(link => {
+            const active = isLinkActive(link.to);
+            return (
+              <Link
+                key={link.to}
+                to={link.to}
+                onClick={() => setOpen(false)}
+                className={`block px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  link.highlight
+                    ? 'bg-[#D4A017] text-[#2C1810] font-bold shadow-sm'
+                    : active
+                    ? 'text-[#D4A017] bg-[#D4A017]/15 font-semibold'
+                    : 'text-[#FDFAF5]/85 hover:text-[#D4A017] hover:bg-white/5'
+                }`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
         </div>
       )}
     </nav>

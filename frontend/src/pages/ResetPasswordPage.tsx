@@ -141,8 +141,8 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md animate-[slide-up_0.6s_ease-out]">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-700/20">
-            <Heart className="w-7 h-7 text-amber-400 fill-amber-400" />
+          <div className="w-14 h-14 bg-[#D4A017] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#D4A017]/25">
+            <Heart className="w-7 h-7 text-[#2C1810] fill-[#2C1810]" />
           </div>
           <h1 className="font-display text-3xl font-bold text-primary-800">Set New Password</h1>
           <p className="text-gray-400 text-sm mt-1">Narkadhai Admin Security</p>
@@ -165,7 +165,7 @@ export default function ResetPasswordPage() {
             <div className="pt-2">
               <Link
                 to="/admin"
-                className="inline-flex items-center justify-center gap-2 w-full bg-primary-700 hover:bg-primary-800 text-white py-3.5 px-4 rounded-xl font-semibold text-sm transition-all shadow-md shadow-primary-700/20"
+                className="inline-flex items-center justify-center gap-2 w-full bg-[#D4A017] hover:bg-[#b88510] text-[#2C1810] py-3.5 px-4 rounded-xl font-bold text-sm transition-all shadow-md shadow-[#D4A017]/20"
               >
                 <ArrowLeft className="w-4 h-4" /> Return to Login
               </Link>
@@ -241,9 +241,9 @@ export default function ResetPasswordPage() {
               type="submit"
               disabled={loading || password.length < 6 || password !== confirmPassword}
               id="reset-password-submit"
-              className="w-full bg-primary-700 hover:bg-primary-800 text-white py-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-primary-700/20"
+              className="w-full bg-[#D4A017] hover:bg-[#b88510] text-[#2C1810] py-4 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-[#D4A017]/25"
             >
-              {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Setting password...</> : 'Set New Password & Continue'}
+              {loading ? <><Loader2 className="w-5 h-5 animate-spin text-[#2C1810]" /> Setting password...</> : 'Set New Password & Continue'}
             </button>
 
             <div className="text-center pt-2">

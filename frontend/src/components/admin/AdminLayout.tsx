@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Heart, LayoutDashboard, IndianRupee, Users, Camera, Settings, LogOut, Shield, UserCircle, Mail, MessageSquareQuote } from 'lucide-react';
+import { LayoutDashboard, IndianRupee, Users, Camera, Settings, LogOut, Shield, UserCircle, Mail, MessageSquareQuote } from 'lucide-react';
 import { adminApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -68,15 +68,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-primary-900 text-white flex flex-col flex-shrink-0">
-        <div className="p-6 border-b border-primary-800">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary-700 border border-amber-400/30 flex items-center justify-center">
-              <Heart className="w-4 h-4 text-amber-400 fill-amber-400" />
+      <aside className="w-64 bg-[#2C1810] text-[#FDFAF5] flex flex-col flex-shrink-0 border-r border-[#D4A017]/20">
+        <div className="p-6 border-b border-[#D4A017]/15">
+          <Link to="/" className="flex items-center gap-2 group">
+            <div className="w-8 h-8 rounded-full bg-[#D4A017] flex items-center justify-center text-[#2C1810] font-bold">
+              <span className="font-display font-bold text-sm">ந</span>
             </div>
             <div>
-              <p className="font-display font-bold text-sm">Narkadhai</p>
-              <p className="text-primary-400 text-xs">Admin Panel</p>
+              <p className="font-display font-bold text-sm text-[#FDFAF5]">Narkadhai</p>
+              <p className="text-[#D4A017] text-xs">Admin Panel</p>
             </div>
           </Link>
         </div>
@@ -92,8 +92,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 to={item.to}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   active
-                    ? 'bg-primary-700 text-white'
-                    : 'text-primary-300 hover:bg-primary-800 hover:text-white'
+                    ? 'bg-[#D4A017] text-[#2C1810] font-bold shadow-xs'
+                    : 'text-[#FDFAF5]/80 hover:bg-white/5 hover:text-[#D4A017]'
                 }`}
               >
                 <item.icon className="w-4 h-4" />
