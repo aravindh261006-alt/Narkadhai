@@ -34,7 +34,12 @@ async def list_members():
     """Public: list all members ordered by display_order."""
     try:
         db = get_supabase()
-        resp = db.table("members").select("*").order("display_order").execute()
+        resp = (
+            db.table("members")
+            .select("id, name, role, bio, photo_url, display_order")
+            .order("display_order", desc=False)
+            .execute()
+        )
         return resp.data or []
     except Exception as e:
         logger.error("Failed to list members: %s", e, exc_info=True)

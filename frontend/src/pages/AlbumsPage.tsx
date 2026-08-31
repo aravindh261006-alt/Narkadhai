@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Camera, ArrowRight } from 'lucide-react';
-import { albumsApi } from '../lib/api';
+import { albumsApi, getCachedAlbums } from '../lib/api';
 import { formatDate, parseAlbumDescription } from '../lib/utils';
 import type { Album } from '../types';
 
 export default function AlbumsPage() {
-  const [albums, setAlbums] = useState<Album[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getCachedAlbums();
+  const [albums, setAlbums] = useState<Album[]>(cached || []);
+  const [loading, setLoading] = useState(!cached);
 
   useEffect(() => {
     albumsApi.list()
       .then(res => setAlbums(Array.isArray(res) ? res : []))
-      .catch(() => setAlbums([]))
+      .catch(() => {
+        if (!cached) setAlbums([]);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -30,12 +33,15 @@ export default function AlbumsPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl overflow-hidden animate-pulse">
+            <div key={i} className="bg-white rounded-2xl overflow-hidden animate-pulse border border-gray-100 shadow-xs">
               <div className="h-56 bg-gray-200" />
               <div className="p-5">
-                <div className="h-5 bg-gray-200 rounded mb-2" />
-                <div className="h-4 bg-gray-100 rounded mb-3 w-24" />
-                <div className="h-10 bg-gray-100 rounded" />
+                <div className="h-5 bg-gray-200 rounded-md mb-2 w-3/4" />
+                <div className="h-3.5 bg-gray-100 rounded mb-3 w-28" />
+                <div className="space-y-2">
+                  <div className="h-3 bg-gray-100 rounded" />
+                  <div className="h-3 bg-gray-100 rounded w-5/6" />
+                </div>
               </div>
             </div>
           ))}
@@ -61,6 +67,9 @@ export default function AlbumsPage() {
                     <img
                       src={album.cover_photo_url}
                       alt={album.home_name}
+                      loading="lazy"
+                      width={400}
+                      height={224}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (

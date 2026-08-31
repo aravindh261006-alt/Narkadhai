@@ -45,10 +45,26 @@ class ReorderPhotosPayload(BaseModel):
 @router.get("")
 @router.get("/")
 async def list_albums():
-    """Public: list all albums ordered by visit_date desc."""
+    """Public: list all albums ordered by visit_date desc.
+    Only fetch album info and cover photo, NOT photos inside each album.
+    """
     try:
         db = get_supabase()
-        resp = db.table("albums").select("*").order("visit_date", desc=True).execute()
+        try:
+            resp = (
+                db.table("albums")
+                .select("id, home_name, visit_date, description, cover_photo_url, location")
+                .order("visit_date", desc=True)
+                .execute()
+            )
+        except Exception:
+            # Fallback if 'location' column does not exist on legacy instances
+            resp = (
+                db.table("albums")
+                .select("id, home_name, visit_date, description, cover_photo_url")
+                .order("visit_date", desc=True)
+                .execute()
+            )
         return resp.data or []
     except Exception as e:
         logger.error("Failed to list albums: %s", e, exc_info=True)

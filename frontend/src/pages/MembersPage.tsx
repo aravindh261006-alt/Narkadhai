@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Users, ArrowLeft, X, Sparkles } from 'lucide-react';
-import { membersApi } from '../lib/api';
+import { membersApi, getCachedMembers } from '../lib/api';
 import type { Member } from '../types';
 
 export default function MembersPage() {
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getCachedMembers();
+  const [members, setMembers] = useState<Member[]>(cached || []);
+  const [loading, setLoading] = useState(!cached);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
 
   useEffect(() => {
@@ -15,7 +16,9 @@ export default function MembersPage() {
         list.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
         setMembers(list);
       })
-      .catch(() => setMembers([]))
+      .catch(() => {
+        if (!cached) setMembers([]);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -41,12 +44,16 @@ export default function MembersPage() {
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl p-6 animate-pulse border border-gray-100">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl p-6 animate-pulse border border-gray-100 shadow-xs">
               <div className="w-24 h-24 bg-gray-200 rounded-full mx-auto mb-4" />
-              <div className="h-5 bg-gray-200 rounded mb-2 mx-8" />
-              <div className="h-4 bg-gray-100 rounded mb-3 mx-12" />
-              <div className="h-12 bg-gray-100 rounded" />
+              <div className="h-5 bg-gray-200 rounded-md mb-2 mx-6" />
+              <div className="h-4 bg-gray-100 rounded-md mb-3 mx-10" />
+              <div className="space-y-1.5 pt-1">
+                <div className="h-3 bg-gray-100 rounded mx-2" />
+                <div className="h-3 bg-gray-100 rounded mx-4" />
+              </div>
+              <div className="h-4 w-20 bg-gray-100 rounded mx-auto mt-4" />
             </div>
           ))}
         </div>
@@ -72,6 +79,9 @@ export default function MembersPage() {
                   <img
                     src={member.photo_url}
                     alt={member.name}
+                    loading="lazy"
+                    width={96}
+                    height={96}
                     className="w-24 h-24 rounded-full object-cover mx-auto border-4 border-primary-100 group-hover:border-primary-400 group-hover:scale-105 transition-all"
                   />
                 ) : (
@@ -129,6 +139,9 @@ export default function MembersPage() {
                   <img
                     src={selectedMember.photo_url}
                     alt={selectedMember.name}
+                    loading="lazy"
+                    width={176}
+                    height={176}
                     className="w-36 h-36 sm:w-44 sm:h-44 rounded-full object-cover mx-auto border-4 border-amber-400/40 shadow-lg"
                   />
                 ) : (

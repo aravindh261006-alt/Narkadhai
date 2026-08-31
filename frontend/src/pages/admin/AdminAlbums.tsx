@@ -455,6 +455,14 @@ export default function AdminAlbums() {
       return;
     }
 
+    const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|avi)$/i.test(file.name);
+    if (!isVideo && file.size > 2 * 1024 * 1024) {
+      toast(`Note: "${file.name}" is over 2MB. For best performance, use images under 2MB.`, {
+        icon: '⚠️',
+        duration: 4000,
+      });
+    }
+
     setUploading(true);
     try {
       const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|avi)$/i.test(file.name);
@@ -726,8 +734,8 @@ export default function AdminAlbums() {
                       <Camera className="w-6 h-6" />
                     </div>
                     <span className="font-semibold text-base">📷🎥 Click or Drag to Add Photos & Videos</span>
-                    <span className="text-xs text-gray-400 max-w-md">
-                      Supports JPG, PNG, WEBP, GIF, MP4, MOV, WEBM, AVI (up to 500MB each)
+                    <span className="text-xs text-gray-500 max-w-md">
+                      Supports JPG, PNG, WEBP, GIF, MP4, MOV, WEBM, AVI. For best performance, use images under 2MB.
                     </span>
                   </div>
                 )}

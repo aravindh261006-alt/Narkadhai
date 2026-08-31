@@ -281,6 +281,9 @@ export default function AlbumDetailPage() {
                   <img
                     src={item.photo_url}
                     alt={item.caption || `${album.home_name} photo`}
+                    loading="lazy"
+                    width={300}
+                    height={300}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                   />
                   {item.caption && (

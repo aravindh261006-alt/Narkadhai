@@ -50,9 +50,16 @@ export default function AdminSettings() {
 
   const handleQrUpload = async () => {
     if (!qrFile) return;
-    if (qrFile.size > 524288000) {
+    const MAX_FILE_SIZE = 524288000; // 500MB
+    if (qrFile.size > MAX_FILE_SIZE) {
       toast.error('File too large. Maximum size is 500MB');
       return;
+    }
+    if (qrFile.size > 2 * 1024 * 1024) {
+      toast('Note: This QR code image is over 2MB. For best performance, use images under 2MB.', {
+        icon: '⚠️',
+        duration: 4000,
+      });
     }
     setUploadingQr(true);
     try {
@@ -74,9 +81,16 @@ export default function AdminSettings() {
 
   const handleQrUpload2 = async () => {
     if (!qrFile2) return;
-    if (qrFile2.size > 524288000) {
+    const MAX_FILE_SIZE = 524288000; // 500MB
+    if (qrFile2.size > MAX_FILE_SIZE) {
       toast.error('File too large. Maximum size is 500MB');
       return;
+    }
+    if (qrFile2.size > 2 * 1024 * 1024) {
+      toast('Note: This QR code image is over 2MB. For best performance, use images under 2MB.', {
+        icon: '⚠️',
+        duration: 4000,
+      });
     }
     setUploadingQr2(true);
     try {
@@ -222,7 +236,7 @@ export default function AdminSettings() {
                 </div>
               )}
 
-              <label className="block border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-primary-300 transition-colors mb-3">
+              <label className="block border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-primary-300 transition-colors mb-2">
                 <input type="file" accept="image/*" className="hidden" onChange={e => setQrFile(e.target.files?.[0] || null)} />
                 {qrFile ? (
                   <p className="text-sm text-primary-600 truncate">📎 {qrFile.name}</p>
@@ -230,6 +244,7 @@ export default function AdminSettings() {
                   <p className="text-sm text-gray-400">Click to select primary QR</p>
                 )}
               </label>
+              <p className="text-[11px] text-gray-500 mb-3 text-center">For best performance, use images under 2MB</p>
 
               <button onClick={handleQrUpload} disabled={!qrFile || uploadingQr}
                 className="w-full inline-flex items-center justify-center gap-2 bg-primary-700 text-white py-2.5 rounded-xl font-medium text-sm hover:bg-primary-800 transition-colors disabled:opacity-40 shadow-xs">
@@ -292,7 +307,7 @@ export default function AdminSettings() {
                 </div>
               )}
 
-              <label className="block border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-amber-400 transition-colors mb-3">
+              <label className="block border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-amber-400 transition-colors mb-2">
                 <input type="file" accept="image/*" className="hidden" onChange={e => setQrFile2(e.target.files?.[0] || null)} />
                 {qrFile2 ? (
                   <p className="text-sm text-amber-600 truncate">📎 {qrFile2.name}</p>
@@ -300,6 +315,7 @@ export default function AdminSettings() {
                   <p className="text-sm text-gray-400">Click to select backup QR</p>
                 )}
               </label>
+              <p className="text-[11px] text-gray-500 mb-3 text-center">For best performance, use images under 2MB</p>
 
               <button onClick={handleQrUpload2} disabled={!qrFile2 || uploadingQr2}
                 className="w-full inline-flex items-center justify-center gap-2 bg-amber-600 text-white py-2.5 rounded-xl font-medium text-sm hover:bg-amber-700 transition-colors disabled:opacity-40 shadow-xs">

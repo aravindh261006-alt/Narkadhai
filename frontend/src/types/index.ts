@@ -17,6 +17,7 @@ export interface Album {
   visit_date: string;
   description: string | null;
   cover_photo_url: string | null;
+  location?: string | null;
   created_at: string;
 }
 

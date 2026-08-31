@@ -39,6 +39,7 @@ create table if not exists public.albums (
   visit_date     date not null,
   description    text,
   cover_photo_url text,
+  location       text,
   created_at     timestamptz not null default now()
 );
 

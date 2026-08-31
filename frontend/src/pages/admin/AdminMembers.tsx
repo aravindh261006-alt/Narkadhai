@@ -97,6 +97,13 @@ export default function AdminMembers() {
       return;
     }
 
+    if (file.size > 2 * 1024 * 1024) {
+      toast('Note: This image is over 2MB. For best performance, use images under 2MB.', {
+        icon: '⚠️',
+        duration: 4000,
+      });
+    }
+
     setUploading(true);
     try {
       const ext = file.name.split('.').pop() || 'jpg';
@@ -442,8 +449,8 @@ export default function AdminMembers() {
                       </button>
                     )}
 
-                    <p className="text-[11px] text-gray-400">
-                      JPG, PNG, or WEBP up to 500MB. Replaces previous photo.
+                    <p className="text-[11px] text-gray-500">
+                      JPG, PNG, or WEBP. For best performance, use images under 2MB.
                     </p>
                   </div>
                 </div>

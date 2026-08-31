@@ -61,43 +61,96 @@ export const settingsApi = {
   update: (updates: Record<string, string>) => api.put('/settings', { updates }).then(r => r.data),
 };
 
+// In-memory cache for fast instant navigation
+let cachedMembers: any[] | null = null;
+let cachedAlbums: any[] | null = null;
+
+export const clearMembersCache = () => { cachedMembers = null; };
+export const clearAlbumsCache = () => { cachedAlbums = null; };
+export const getCachedMembers = () => cachedMembers;
+export const getCachedAlbums = () => cachedAlbums;
+
 export const membersApi = {
-  list: async () => {
+  list: async (forceRefresh = false) => {
+    if (!forceRefresh && cachedMembers) {
+      return cachedMembers;
+    }
     try {
       const res = await api.get('/members');
-      if (Array.isArray(res.data)) return res.data;
+      if (Array.isArray(res.data)) {
+        cachedMembers = res.data;
+        return res.data;
+      }
     } catch (e) {
       console.warn('Backend members list failed, trying Supabase directly', e);
     }
     if (isSupabaseConfigured) {
       try {
-        const { data } = await supabase.from('members').select('*').order('display_order');
-        if (Array.isArray(data)) return data;
+        const { data } = await supabase
+          .from('members')
+          .select('id, name, role, bio, photo_url, display_order')
+          .order('display_order', { ascending: true });
+        if (Array.isArray(data)) {
+          cachedMembers = data;
+          return data;
+        }
       } catch {}
     }
-    return [];
+    return cachedMembers || [];
   },
-  create: (data: object) => api.post('/members', data).then(r => r.data),
-  update: (id: string, data: object) => api.put(`/members/${id}`, data).then(r => r.data),
-  delete: (id: string) => api.delete(`/members/${id}`),
+  create: (data: object) => {
+    clearMembersCache();
+    return api.post('/members', data).then(r => { clearMembersCache(); return r.data; });
+  },
+  update: (id: string, data: object) => {
+    clearMembersCache();
+    return api.put(`/members/${id}`, data).then(r => { clearMembersCache(); return r.data; });
+  },
+  delete: (id: string) => {
+    clearMembersCache();
+    return api.delete(`/members/${id}`).then(r => { clearMembersCache(); return r; });
+  },
   getUploadUrl: () => api.post('/members/upload-url').then(r => r.data),
 };
 
 export const albumsApi = {
-  list: async () => {
+  list: async (forceRefresh = false) => {
+    if (!forceRefresh && cachedAlbums) {
+      return cachedAlbums;
+    }
     try {
       const res = await api.get('/albums');
-      if (Array.isArray(res.data)) return res.data;
+      if (Array.isArray(res.data)) {
+        cachedAlbums = res.data;
+        return res.data;
+      }
     } catch (e) {
       console.warn('Backend albums list failed, trying Supabase directly', e);
     }
     if (isSupabaseConfigured) {
       try {
-        const { data } = await supabase.from('albums').select('*').order('visit_date', { ascending: false });
-        if (Array.isArray(data)) return data;
+        try {
+          const { data } = await supabase
+            .from('albums')
+            .select('id, home_name, visit_date, description, cover_photo_url, location')
+            .order('visit_date', { ascending: false });
+          if (Array.isArray(data)) {
+            cachedAlbums = data;
+            return data;
+          }
+        } catch {
+          const { data } = await supabase
+            .from('albums')
+            .select('id, home_name, visit_date, description, cover_photo_url')
+            .order('visit_date', { ascending: false });
+          if (Array.isArray(data)) {
+            cachedAlbums = data;
+            return data;
+          }
+        }
       } catch {}
     }
-    return [];
+    return cachedAlbums || [];
   },
   get: async (id: string) => {
     try {
@@ -135,10 +188,22 @@ export const albumsApi = {
     }
     return null;
   },
-  create: (data: object) => api.post('/albums', data).then(r => r.data),
-  update: (id: string, data: object) => api.put(`/albums/${id}`, data).then(r => r.data),
-  delete: (id: string) => api.delete(`/albums/${id}`),
-  addPhoto: (albumId: string, data: object) => api.post(`/albums/${albumId}/photos`, data).then(r => r.data),
+  create: (data: object) => {
+    clearAlbumsCache();
+    return api.post('/albums', data).then(r => { clearAlbumsCache(); return r.data; });
+  },
+  update: (id: string, data: object) => {
+    clearAlbumsCache();
+    return api.put(`/albums/${id}`, data).then(r => { clearAlbumsCache(); return r.data; });
+  },
+  delete: (id: string) => {
+    clearAlbumsCache();
+    return api.delete(`/albums/${id}`).then(r => { clearAlbumsCache(); return r; });
+  },
+  addPhoto: (albumId: string, data: object) => {
+    clearAlbumsCache();
+    return api.post(`/albums/${albumId}/photos`, data).then(r => { clearAlbumsCache(); return r.data; });
+  },
   reorderPhotos: async (albumId: string, orderedPhotos: { id: string; display_order: number }[]) => {
     try {
       return await api.put(`/albums/${albumId}/photos/reorder`, {

@@ -137,7 +137,7 @@ export default function HomePage() {
                 <Link key={album.id} to={`/albums/${album.id}`} className="group block bg-white rounded-2xl overflow-hidden shadow-sm border border-primary-100 card-hover">
                   <div className="h-48 bg-primary-100 overflow-hidden">
                     {album.cover_photo_url ? (
-                      <img src={album.cover_photo_url} alt={album.home_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <img src={album.cover_photo_url} alt={album.home_name} loading="lazy" width={400} height={192} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <Camera className="w-12 h-12 text-primary-300" />
