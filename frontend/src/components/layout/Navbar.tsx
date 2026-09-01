@@ -1,7 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
-import Logo from './Logo';
 
 const navLinks = [
   { to: '/', label: 'Home' },
@@ -27,8 +26,12 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="group flex items-center">
-            <Logo size="md" inverted={true} />
+          <Link to="/" className="group flex items-center" aria-label="Narkadhai Home">
+            <img
+              src="/logo.png"
+              alt="Narkadhai"
+              className="w-[125px] sm:w-[140px] md:w-[150px] h-auto max-h-11 object-contain transition-transform group-hover:scale-105"
+            />
           </Link>
 
           {/* Desktop nav */}

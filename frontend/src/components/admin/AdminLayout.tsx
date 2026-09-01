@@ -69,15 +69,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <aside className="w-64 bg-[#2C1810] text-[#FDFAF5] flex flex-col flex-shrink-0 border-r border-[#D4A017]/20">
-        <div className="p-6 border-b border-[#D4A017]/15">
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-full bg-[#D4A017] flex items-center justify-center text-[#2C1810] font-bold">
-              <span className="font-display font-bold text-sm">ந</span>
-            </div>
-            <div>
-              <p className="font-display font-bold text-sm text-[#FDFAF5]">Narkadhai</p>
-              <p className="text-[#D4A017] text-xs">Admin Panel</p>
-            </div>
+        <div className="p-5 border-b border-[#D4A017]/15">
+          <Link to="/" className="flex flex-col gap-1 group" aria-label="Narkadhai Admin Panel">
+            <img
+              src="/logo.png"
+              alt="Narkadhai"
+              className="w-[130px] h-auto max-h-10 object-contain transition-transform group-hover:scale-105"
+            />
+            <span className="text-[#D4A017] text-[10px] font-bold tracking-widest uppercase pl-0.5">Admin Panel</span>
           </Link>
         </div>
 

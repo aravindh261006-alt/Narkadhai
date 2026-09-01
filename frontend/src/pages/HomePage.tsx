@@ -77,8 +77,12 @@ export default function HomePage() {
             <Heart className="w-4 h-4 fill-amber-300" />
             Visiting homes · Spreading care
           </div>
-          <h1 className="font-display text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            Narkadhai
+          <h1 className="flex justify-center items-center mb-6">
+            <img
+              src="/logo.png"
+              alt="Narkadhai"
+              className="w-[300px] sm:w-[350px] md:w-[400px] max-w-full h-auto object-contain mx-auto drop-shadow-md"
+            />
           </h1>
           <p className="text-xl md:text-2xl text-primary-200 max-w-2xl mx-auto mb-10">
             {settings.mission_text?.split('.')[0] || 'An informal initiative connecting hearts with homes.'}
