@@ -10,9 +10,9 @@ export default function Logo({
   size = 'md',
 }: LogoProps) {
   const sizeClasses = {
-    sm: 'w-[110px]',
-    md: 'w-[130px] sm:w-[145px]',
-    lg: 'w-[160px] sm:w-[180px]',
+    sm: 'w-[75px]',
+    md: 'w-[85px] sm:w-[95px]',
+    lg: 'w-[100px]',
   }[size];
 
   return (

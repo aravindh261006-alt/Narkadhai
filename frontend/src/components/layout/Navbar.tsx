@@ -30,7 +30,7 @@ export default function Navbar() {
             <img
               src="/logo.png"
               alt="Narkadhai"
-              className="w-[125px] sm:w-[140px] md:w-[150px] h-auto max-h-11 object-contain transition-transform group-hover:scale-105"
+              className="w-[85px] sm:w-[95px] md:w-[100px] h-auto max-h-12 object-contain transition-transform group-hover:scale-105"
             />
           </Link>
 

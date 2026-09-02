@@ -81,7 +81,7 @@ export default function HomePage() {
             <img
               src="/logo.png"
               alt="Narkadhai"
-              className="w-[300px] sm:w-[350px] md:w-[400px] max-w-full h-auto object-contain mx-auto drop-shadow-md"
+              className="w-[200px] sm:w-[225px] md:w-[240px] max-w-full h-auto object-contain mx-auto drop-shadow-md"
             />
           </h1>
           <p className="text-xl md:text-2xl text-primary-200 max-w-2xl mx-auto mb-10">
