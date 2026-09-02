@@ -10,9 +10,9 @@ export default function Logo({
   size = 'md',
 }: LogoProps) {
   const sizeClasses = {
-    sm: 'w-[75px]',
-    md: 'w-[85px] sm:w-[95px]',
-    lg: 'w-[100px]',
+    sm: 'w-[110px]',
+    md: 'w-[135px] sm:w-[150px]',
+    lg: 'w-[170px] sm:w-[190px]',
   }[size];
 
   return (
@@ -20,7 +20,7 @@ export default function Logo({
       <img
         src="/logo.png"
         alt="Narkadhai"
-        className={`${sizeClasses} h-auto max-h-12 object-contain transition-transform group-hover:scale-105`}
+        className={`${sizeClasses} h-auto max-h-14 object-contain transition-transform group-hover:scale-105`}
       />
     </div>
   );

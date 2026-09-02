@@ -68,23 +68,23 @@ export default function HomePage() {
     <div className="animate-[fade-in_0.5s_ease-out]">
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 text-white">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-10 left-10 w-72 h-72 bg-amber-400 rounded-full blur-3xl" />
-          <div className="absolute bottom-10 right-10 w-96 h-96 bg-primary-400 rounded-full blur-3xl" />
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
+          <div className="absolute top-6 left-10 w-44 h-44 bg-amber-400 rounded-full blur-2xl" />
+          <div className="absolute bottom-6 right-10 w-56 h-56 bg-primary-400 rounded-full blur-2xl" />
         </div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-36 text-center">
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur px-4 py-2 rounded-full text-amber-300 text-sm font-medium mb-8 border border-white/20">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-16 md:py-20 text-center">
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur px-4 py-2 rounded-full text-amber-300 text-sm font-medium mb-5 border border-white/20">
             <Heart className="w-4 h-4 fill-amber-300" />
             Visiting homes · Spreading care
           </div>
-          <h1 className="flex justify-center items-center mb-6">
+          <h1 className="flex justify-center items-center mb-5">
             <img
               src="/logo.png"
               alt="Narkadhai"
-              className="w-[200px] sm:w-[225px] md:w-[240px] max-w-full h-auto object-contain mx-auto drop-shadow-md"
+              className="w-[240px] sm:w-[270px] md:w-[300px] max-w-full h-auto object-contain mx-auto drop-shadow-md"
             />
           </h1>
-          <p className="text-xl md:text-2xl text-primary-200 max-w-2xl mx-auto mb-10">
+          <p className="text-xl md:text-2xl text-primary-200 max-w-2xl mx-auto mb-8">
             {settings.mission_text?.split('.')[0] || 'An informal initiative connecting hearts with homes.'}
           </p>
 

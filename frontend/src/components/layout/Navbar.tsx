@@ -24,13 +24,13 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50 bg-[#2C1810] border-b border-[#D4A017]/20 shadow-md text-[#FDFAF5]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-16 sm:h-18">
           {/* Logo */}
-          <Link to="/" className="group flex items-center" aria-label="Narkadhai Home">
+          <Link to="/" className="group flex items-center py-1" aria-label="Narkadhai Home">
             <img
               src="/logo.png"
               alt="Narkadhai"
-              className="w-[85px] sm:w-[95px] md:w-[100px] h-auto max-h-12 object-contain transition-transform group-hover:scale-105"
+              className="w-[130px] sm:w-[140px] md:w-[150px] h-auto max-h-12 sm:max-h-14 object-contain transition-transform group-hover:scale-105"
             />
           </Link>
 

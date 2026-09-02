@@ -74,7 +74,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <img
               src="/logo.png"
               alt="Narkadhai"
-              className="w-[95px] h-auto max-h-10 object-contain transition-transform group-hover:scale-105"
+              className="w-[130px] sm:w-[140px] h-auto max-h-11 object-contain transition-transform group-hover:scale-105"
             />
             <span className="text-[#D4A017] text-[10px] font-bold tracking-widest uppercase pl-0.5">Admin Panel</span>
           </Link>
