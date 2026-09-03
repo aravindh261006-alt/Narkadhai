@@ -227,7 +227,7 @@ export default function AdminAccess() {
                       <tr><td colSpan={4} className="px-5 py-8 text-center text-gray-400">No admins found</td></tr>
                     ) : (Array.isArray(admins) ? admins : []).map(a => {
                       const isSelf = currentUser?.email?.toLowerCase() === a.email?.toLowerCase();
-                      const isOwnerEmail = a.email?.toLowerCase() === 'support.narkadhai@gmail.com';
+                      const isOwnerEmail = a.email?.toLowerCase() === 'narkadhai.official@gmail.com';
                       return (
                         <tr key={a.id} className="hover:bg-gray-50/50 transition-colors">
                           <td className="px-5 py-4">

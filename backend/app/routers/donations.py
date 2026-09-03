@@ -342,7 +342,7 @@ async def send_custom_thank_you(
       </div>
 
       <div style="margin-top:24px;text-align:center;color:#64748b;font-size:12px;">
-        <p style="margin:0;">Narkadhai Community Initiative · <a href="mailto:support.narkadhai@gmail.com" style="color:#1A4D3A;text-decoration:none;">support.narkadhai@gmail.com</a></p>
+        <p style="margin:0;">Narkadhai Community Initiative · <a href="mailto:narkadhai.official@gmail.com" style="color:#1A4D3A;text-decoration:none;">narkadhai.official@gmail.com</a></p>
       </div>
     </div>
     """

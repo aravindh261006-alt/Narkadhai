@@ -46,7 +46,7 @@ class GmailAPIEmailService(EmailService):
         client_id = (cfg.GMAIL_CLIENT_ID or "").strip()
         client_secret = (cfg.GMAIL_CLIENT_SECRET or "").strip()
         refresh_token = (cfg.GMAIL_REFRESH_TOKEN or "").strip()
-        user_email = (cfg.GMAIL_USER or "").strip() or "support.narkadhai@gmail.com"
+        user_email = (cfg.GMAIL_USER or "").strip() or "narkadhai.official@gmail.com"
 
         if not client_id or not client_secret or not refresh_token or refresh_token.lower() == "log":
             logger.error("Gmail OAuth2 credentials (GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN) are not configured.")
@@ -200,14 +200,14 @@ def send_owner_donation_notification(
     amount: float,
     utr: str | None,
 ) -> bool:
-    """Send notification to support.narkadhai@gmail.com / admins via Gmail API."""
+    """Send notification to narkadhai.official@gmail.com / admins via Gmail API."""
     svc = get_email_service()
     formatted_amount = _format_inr(amount)
     utr_line = f"<p><strong>UTR / Txn ID:</strong> {utr}</p>" if utr else ""
 
-    # Ensure support.narkadhai@gmail.com is always notified
+    # Ensure narkadhai.official@gmail.com is always notified
     recipients = list(owner_emails) if owner_emails else []
-    primary_email = "support.narkadhai@gmail.com"
+    primary_email = "narkadhai.official@gmail.com"
     if primary_email not in [e.lower() for e in recipients]:
         recipients.append(primary_email)
 
@@ -243,10 +243,10 @@ def send_contact_notification(
     sender_email: str,
     message: str,
 ) -> None:
-    """Send contact message notification to support.narkadhai@gmail.com / admins via Gmail API."""
+    """Send contact message notification to narkadhai.official@gmail.com / admins via Gmail API."""
     svc = get_email_service()
     recipients = list(owner_emails) if owner_emails else []
-    primary_email = "support.narkadhai@gmail.com"
+    primary_email = "narkadhai.official@gmail.com"
     if primary_email not in [e.lower() for e in recipients]:
         recipients.append(primary_email)
 

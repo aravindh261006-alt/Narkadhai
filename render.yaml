@@ -17,7 +17,7 @@ services:
       - key: SUPABASE_JWT_SECRET
         sync: false
       - key: GMAIL_USER
-        value: support.narkadhai@gmail.com
+        value: narkadhai.official@gmail.com
       - key: GMAIL_CLIENT_ID
         sync: false
       - key: GMAIL_CLIENT_SECRET
@@ -25,10 +25,10 @@ services:
       - key: GMAIL_REFRESH_TOKEN
         sync: false
       - key: EMAIL_FROM
-        value: Narkadhai <support.narkadhai@gmail.com>
+        value: Narkadhai <narkadhai.official@gmail.com>
       - key: EMAIL_REPLY_TO
-        value: support.narkadhai@gmail.com
+        value: narkadhai.official@gmail.com
       - key: OWNER_EMAIL
-        value: support.narkadhai@gmail.com
+        value: narkadhai.official@gmail.com
       - key: FRONTEND_URL
         value: https://narkadhai.vercel.app,http://localhost:5173

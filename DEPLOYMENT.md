@@ -49,8 +49,8 @@ VALUES ('your-email@example.com', 'Your Name', 'owner');
 3. Create OAuth 2.0 Client ID Credentials (Web Application)
 4. Authorize redirect URI or generate a Refresh Token with scope `https://www.googleapis.com/auth/gmail.send`
 5. Copy `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, and `GMAIL_REFRESH_TOKEN`
-6. Set `GMAIL_USER` to `support.narkadhai@gmail.com`
-7. Set `EMAIL_FROM` to `Narkadhai <support.narkadhai@gmail.com>`
+6. Set `GMAIL_USER` to `narkadhai.official@gmail.com`
+7. Set `EMAIL_FROM` to `Narkadhai <narkadhai.official@gmail.com>`
 
 > 💡 For local development, set `GMAIL_REFRESH_TOKEN=log` to print emails to the terminal console instead of sending them.
 
@@ -99,13 +99,13 @@ Then they must also be added as Supabase Auth users (Authentication → Users).
 | `SUPABASE_URL` | Same Supabase project URL | 🔒 Secret |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key — full DB access, backend-only! | 🔒 Secret — NEVER expose to frontend |
 | `SUPABASE_JWT_SECRET` | Found in Supabase → Settings → API → JWT Secret. Used to verify auth tokens. | 🔒 Secret |
-| `GMAIL_USER` | Gmail address e.g. `support.narkadhai@gmail.com` | 🔒 Secret |
+| `GMAIL_USER` | Gmail address e.g. `narkadhai.official@gmail.com` | 🔒 Secret |
 | `GMAIL_CLIENT_ID` | Google OAuth2 Client ID | 🔒 Secret |
 | `GMAIL_CLIENT_SECRET` | Google OAuth2 Client Secret | 🔒 Secret |
 | `GMAIL_REFRESH_TOKEN` | Google OAuth2 Refresh Token (set to `log` for local dev) | 🔒 Secret |
-| `EMAIL_FROM` | The "From" address for outgoing emails e.g. `Narkadhai <support.narkadhai@gmail.com>` | 🔒 Secret |
-| `EMAIL_REPLY_TO` | The "Reply-To" address e.g. `support.narkadhai@gmail.com` | 🔒 Secret |
-| `OWNER_EMAIL` | Owner's email for notification e.g. `support.narkadhai@gmail.com` | 🔒 Secret |
+| `EMAIL_FROM` | The "From" address for outgoing emails e.g. `Narkadhai <narkadhai.official@gmail.com>` | 🔒 Secret |
+| `EMAIL_REPLY_TO` | The "Reply-To" address e.g. `narkadhai.official@gmail.com` | 🔒 Secret |
+| `OWNER_EMAIL` | Owner's email for notification e.g. `narkadhai.official@gmail.com` | 🔒 Secret |
 | `FRONTEND_URL` | Your deployed frontend URL for CORS e.g. `https://narkadhai.vercel.app` | 🔒 Secret |
 | `ENVIRONMENT` | `production` for live, `development` for local | 🔒 Secret |
 

@@ -123,13 +123,13 @@ export default function ContactPage() {
           <div className="bg-primary-50 rounded-2xl p-6 border border-primary-100">
             <h3 className="font-display text-xl font-bold text-primary-800 mb-4">Direct Contact</h3>
             <a
-              href={`mailto:${settings.contact_email || 'support.narkadhai@gmail.com'}`}
+              href={`mailto:${settings.contact_email || 'narkadhai.official@gmail.com'}`}
               className="flex items-center gap-3 text-primary-700 hover:text-primary-900 transition-colors group"
             >
               <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center group-hover:bg-primary-200 transition-colors">
                 <Mail className="w-5 h-5 text-primary-600" />
               </div>
-              <span className="font-medium">{settings.contact_email || 'support.narkadhai@gmail.com'}</span>
+              <span className="font-medium">{settings.contact_email || 'narkadhai.official@gmail.com'}</span>
             </a>
           </div>
 

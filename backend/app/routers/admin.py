@@ -177,8 +177,8 @@ async def add_admin(
     if role_val not in ("owner", "audit"):
         raise HTTPException(status_code=400, detail="Invalid role. Must be 'owner' or 'audit'.")
 
-    if email_val == "support.narkadhai@gmail.com" and role_val != "owner":
-        raise HTTPException(status_code=400, detail="support.narkadhai@gmail.com must always keep the 'owner' role.")
+    if email_val == "narkadhai.official@gmail.com" and role_val != "owner":
+        raise HTTPException(status_code=400, detail="narkadhai.official@gmail.com must always keep the 'owner' role.")
 
     db = get_supabase()
 
@@ -257,7 +257,7 @@ async def remove_admin(
     admin_id: str,
     admin: Annotated[AdminUser, Depends(require_owner)],
 ):
-    """Owner only: remove an admin. Cannot remove support.narkadhai@gmail.com or yourself."""
+    """Owner only: remove an admin. Cannot remove narkadhai.official@gmail.com or yourself."""
     db = get_supabase()
     record = db.table("authorized_admins").select("email").eq("id", admin_id).single().execute()
     if not record.data:
@@ -265,8 +265,8 @@ async def remove_admin(
 
     email_val = record.data["email"].lower().strip()
 
-    if email_val == "support.narkadhai@gmail.com":
-        raise HTTPException(status_code=400, detail="The owner support.narkadhai@gmail.com cannot be removed.")
+    if email_val == "narkadhai.official@gmail.com":
+        raise HTTPException(status_code=400, detail="The owner narkadhai.official@gmail.com cannot be removed.")
 
     if email_val == admin.email.lower().strip():
         raise HTTPException(status_code=400, detail="You cannot remove your own admin access.")

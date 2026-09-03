@@ -90,7 +90,7 @@ From the bottom of our hearts — thank you for believing in what we do. You are
 
 With love and gratitude,
 Team Narkadhai 🙏
-support.narkadhai@gmail.com`;
+narkadhai.official@gmail.com`;
 
     setThankYouDonation(d);
     setThankYouForm({

@@ -89,7 +89,7 @@ insert into public.settings (key, value) values
   ('instagram_handle', '@narkadhai'),
   ('mission_text', 'Narkadhai is an informal initiative that visits children''s homes and old-age homes, collecting voluntary donations to support them. We believe in radical transparency — every rupee is accounted for and our books are open.'),
   ('about_text', 'Narkadhai was started by a group of friends who wanted to make a direct, tangible difference in their community. We visit homes, connect with the people there, and channel voluntary donations to meet their needs.'),
-  ('contact_email', 'support.narkadhai@gmail.com'),
+  ('contact_email', 'narkadhai.official@gmail.com'),
   ('owner_name', 'Narkadhai Owner'),
   ('owner_bio', 'Founder of the Narkadhai initiative.'),
   ('owner_photo_url', '')

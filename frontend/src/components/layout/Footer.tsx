@@ -88,11 +88,11 @@ export default function Footer() {
               </a>
               <div>
                 <a
-                  href="mailto:support.narkadhai@gmail.com"
+                  href="mailto:narkadhai.official@gmail.com"
                   className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[#FDFAF5]/80 hover:text-[#D4A017] hover:bg-white/5 text-sm transition-all"
                 >
                   <Mail className="w-4 h-4 text-[#D4A017]" />
-                  support.narkadhai@gmail.com
+                  narkadhai.official@gmail.com
                 </a>
               </div>
             </div>

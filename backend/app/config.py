@@ -11,13 +11,13 @@ class Settings(BaseSettings):
     SUPABASE_JWT_SECRET: str = ""
 
     # Gmail API (OAuth2 over HTTPS 443)
-    GMAIL_USER: str = "support.narkadhai@gmail.com"
+    GMAIL_USER: str = "narkadhai.official@gmail.com"
     GMAIL_CLIENT_ID: str = ""
     GMAIL_CLIENT_SECRET: str = ""
     GMAIL_REFRESH_TOKEN: str = ""
-    EMAIL_FROM: str = "Narkadhai <support.narkadhai@gmail.com>"
-    EMAIL_REPLY_TO: str = "support.narkadhai@gmail.com"
-    OWNER_EMAIL: str = "support.narkadhai@gmail.com"         # notification recipient
+    EMAIL_FROM: str = "Narkadhai <narkadhai.official@gmail.com>"
+    EMAIL_REPLY_TO: str = "narkadhai.official@gmail.com"
+    OWNER_EMAIL: str = "narkadhai.official@gmail.com"         # notification recipient
 
     # CORS
     FRONTEND_URL: str = "https://narkadhai.vercel.app,http://localhost:5173"

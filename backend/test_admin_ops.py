@@ -17,7 +17,7 @@ mock_supabase = MagicMock()
 
 
 def mock_owner_admin():
-    return AdminUser(email="support.narkadhai@gmail.com", name="Owner", role="owner")
+    return AdminUser(email="narkadhai.official@gmail.com", name="Owner", role="owner")
 
 
 def mock_audit_admin():
@@ -187,7 +187,7 @@ class TestAdminEndpoints(unittest.TestCase):
         mock_supabase.table().insert().execute.return_value.data = [
             {"id": "msg1", "name": "Alice", "email": "alice@example.com", "message": "Hello Narkadhai!", "is_read": False}
         ]
-        mock_supabase.table().select().execute.return_value.data = [{"email": "support.narkadhai@gmail.com"}]
+        mock_supabase.table().select().execute.return_value.data = [{"email": "narkadhai.official@gmail.com"}]
 
         resp_submit = client.post(
             "/api/contact",
@@ -281,7 +281,7 @@ class TestAdminEndpoints(unittest.TestCase):
         app.dependency_overrides[require_audit_or_owner] = mock_owner_admin
         resp = client.get("/api/admin/me")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json()["email"], "support.narkadhai@gmail.com")
+        self.assertEqual(resp.json()["email"], "narkadhai.official@gmail.com")
 
     @patch("app.routers.admin.get_supabase", return_value=mock_supabase)
     def test_change_email(self, mock_get_db):
@@ -296,7 +296,7 @@ class TestAdminEndpoints(unittest.TestCase):
 
         user1 = MagicMock()
         user1.id = "u1"
-        user1.email = "support.narkadhai@gmail.com"
+        user1.email = "narkadhai.official@gmail.com"
         mock_supabase.auth.admin.list_users.return_value = [user1]
 
         resp = client.post(
@@ -313,7 +313,7 @@ class TestAdminEndpoints(unittest.TestCase):
 
         user1 = MagicMock()
         user1.id = "u1"
-        user1.email = "support.narkadhai@gmail.com"
+        user1.email = "narkadhai.official@gmail.com"
         mock_supabase.auth.admin.list_users.return_value = [user1]
 
         resp = client.post(
@@ -393,7 +393,7 @@ class TestAdminEndpoints(unittest.TestCase):
         resp = client.get("/api/admin/verify-access")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["ok"], True)
-        self.assertEqual(resp.json()["email"], "support.narkadhai@gmail.com")
+        self.assertEqual(resp.json()["email"], "narkadhai.official@gmail.com")
 
     @patch("app.services.auth_service.get_supabase")
     def test_unauthorized_access_raises_access_denied_message(self, mock_get_db):
@@ -458,19 +458,19 @@ class TestAdminEndpoints(unittest.TestCase):
 
         mock_user = MagicMock()
         mock_user.id = "user-123"
-        mock_user.email = "support.narkadhai@gmail.com"
+        mock_user.email = "narkadhai.official@gmail.com"
         mock_user.user_metadata = {}
         mock_user.app_metadata = {}
         mock_db.auth.get_user.return_value.user = mock_user
 
         mock_db.table().select().ilike().execute.return_value.data = [
-            {"email": "support.narkadhai@gmail.com", "name": "Owner", "role": "owner"}
+            {"email": "narkadhai.official@gmail.com", "name": "Owner", "role": "owner"}
         ]
 
         import asyncio
         creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="mock-supabase-token")
         admin = asyncio.run(get_current_admin(creds))
-        self.assertEqual(admin.email, "support.narkadhai@gmail.com")
+        self.assertEqual(admin.email, "narkadhai.official@gmail.com")
         self.assertEqual(admin.role, "owner")
         self.assertTrue(admin.is_owner)
 
@@ -547,12 +547,12 @@ class TestAdminEndpoints(unittest.TestCase):
         mock_send_exec = mock_service.users.return_value.messages.return_value.send.return_value.execute
         mock_send_exec.return_value = {"id": "gmail_msg_123"}
 
-        with patch.object(settings, "GMAIL_USER", "support.narkadhai@gmail.com"), \
+        with patch.object(settings, "GMAIL_USER", "narkadhai.official@gmail.com"), \
              patch.object(settings, "GMAIL_CLIENT_ID", "test_client_id"), \
              patch.object(settings, "GMAIL_CLIENT_SECRET", "test_client_secret"), \
              patch.object(settings, "GMAIL_REFRESH_TOKEN", "test_refresh_token"), \
-             patch.object(settings, "EMAIL_FROM", "Narkadhai <support.narkadhai@gmail.com>"), \
-             patch.object(settings, "EMAIL_REPLY_TO", "support.narkadhai@gmail.com"):
+             patch.object(settings, "EMAIL_FROM", "Narkadhai <narkadhai.official@gmail.com>"), \
+             patch.object(settings, "EMAIL_REPLY_TO", "narkadhai.official@gmail.com"):
             svc = GmailAPIEmailService()
             svc.send(to="donor@example.com", subject="Thank you", html="<p>Thanks!</p>")
 
@@ -565,8 +565,8 @@ class TestAdminEndpoints(unittest.TestCase):
             raw_decoded = base64.urlsafe_b64decode(raw_b64.encode("utf-8")).decode("utf-8", errors="ignore")
 
             self.assertIn("Subject: Thank you", raw_decoded)
-            self.assertIn("From: Narkadhai <support.narkadhai@gmail.com>", raw_decoded)
-            self.assertIn("Reply-To: support.narkadhai@gmail.com", raw_decoded)
+            self.assertIn("From: Narkadhai <narkadhai.official@gmail.com>", raw_decoded)
+            self.assertIn("Reply-To: narkadhai.official@gmail.com", raw_decoded)
             self.assertIn("To: donor@example.com", raw_decoded)
 
     def test_gmail_api_email_service_missing_credentials(self):
