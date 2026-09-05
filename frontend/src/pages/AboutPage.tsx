@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { settingsApi } from '../lib/api';
+import { settingsApi, getCachedSettings } from '../lib/api';
 import type { Settings } from '../types';
 
 export default function AboutPage() {
-  const [settings, setSettings] = useState<Settings>({});
+  const cached = getCachedSettings();
+  const [settings, setSettings] = useState<Settings>(cached || {});
 
   useEffect(() => {
     settingsApi.get().then(setSettings).catch(() => {});

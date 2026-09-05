@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Heart, Users, BookOpen, Camera, MessageSquareQuote, Send, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { settingsApi, albumsApi, communityMessagesApi } from '../lib/api';
+import { settingsApi, albumsApi, communityMessagesApi, getCachedSettings, getCachedAlbums } from '../lib/api';
 import { formatDate, parseAlbumDescription } from '../lib/utils';
 import type { Settings, Album, CommunityMessage } from '../types';
 
@@ -17,8 +17,10 @@ function InstagramIcon({ className }: { className?: string }) {
 }
 
 export default function HomePage() {
-  const [settings, setSettings] = useState<Settings>({});
-  const [albums, setAlbums] = useState<Album[]>([]);
+  const cachedSettings = getCachedSettings();
+  const cachedAlbums = getCachedAlbums();
+  const [settings, setSettings] = useState<Settings>(cachedSettings || {});
+  const [albums, setAlbums] = useState<Album[]>(cachedAlbums ? cachedAlbums.slice(0, 3) : []);
   const [approvedMessages, setApprovedMessages] = useState<CommunityMessage[]>([]);
 
   // Community message submission state

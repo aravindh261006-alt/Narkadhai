@@ -12,7 +12,7 @@ function InstagramIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-import { contactApi, settingsApi } from '../lib/api';
+import { contactApi, settingsApi, getCachedSettings } from '../lib/api';
 import type { Settings } from '../types';
 
 interface ContactForm {
@@ -23,7 +23,8 @@ interface ContactForm {
 }
 
 export default function ContactPage() {
-  const [settings, setSettings] = useState<Settings>({});
+  const cached = getCachedSettings();
+  const [settings, setSettings] = useState<Settings>(cached || {});
   const [submitted, setSubmitted] = useState(false);
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ContactForm>();
 

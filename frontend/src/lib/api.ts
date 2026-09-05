@@ -16,7 +16,8 @@ if ((rawBase.startsWith('http://') || rawBase.startsWith('https://')) && !rawBas
 }
 const BASE = rawBase;
 
-const api = axios.create({ baseURL: BASE });
+// Backend API client with 5-second timeout to avoid waiting on Render cold starts
+const api = axios.create({ baseURL: BASE, timeout: 5000 });
 
 // Attach Supabase auth token to all requests
 api.interceptors.request.use(async (config) => {
@@ -44,9 +45,10 @@ const SETTINGS_CACHE_KEY = 'narkadhai_settings_cache';
 const MEMBERS_CACHE_KEY = 'narkadhai_members_cache';
 const ALBUMS_CACHE_KEY = 'narkadhai_albums_cache';
 
+// Cache TTLs
 const SETTINGS_TTL = 5 * 60 * 1000; // 5 minutes
-const MEMBERS_TTL = 5 * 60 * 1000;  // 5 minutes
-const ALBUMS_TTL = 2 * 60 * 1000;   // 2 minutes
+const MEMBERS_TTL = 10 * 60 * 1000; // 10 minutes
+const ALBUMS_TTL = 5 * 60 * 1000;   // 5 minutes
 
 function readStorageCache<T>(key: string, ttl: number): T | null {
   try {
@@ -139,68 +141,91 @@ export const getCachedAlbums = (): any[] | null => {
 // --- Typed API helpers ---
 
 export const settingsApi = {
-  get: async (forceRefresh = false) => {
+  get: async (forceRefresh = false): Promise<Record<string, any>> => {
     if (!forceRefresh) {
       const existing = getCachedSettings();
       if (existing && Object.keys(existing).length > 0) return existing;
     }
+    // 1. Fetch directly from Supabase (bypasses Render cold starts)
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('settings')
+          .select('key, value');
+        if (!error && Array.isArray(data)) {
+          const map = Object.fromEntries(data.map((r: any) => [r.key, r.value]));
+          cachedSettings = { data: map, timestamp: Date.now() };
+          writeStorageCache(SETTINGS_CACHE_KEY, map);
+          return map;
+        }
+      } catch (err) {
+        console.warn('Direct Supabase settings fetch failed, trying backend fallback:', err);
+      }
+    }
+    // 2. Fallback to backend with 5s timeout
     try {
-      const res = await api.get('/settings');
+      const res = await api.get('/settings', { timeout: 5000 });
       if (res.data && typeof res.data === 'object' && Object.keys(res.data).length > 0) {
         cachedSettings = { data: res.data, timestamp: Date.now() };
         writeStorageCache(SETTINGS_CACHE_KEY, res.data);
         return res.data;
       }
     } catch (e) {
-      console.warn('Backend settings get failed, trying Supabase directly', e);
-    }
-    if (isSupabaseConfigured) {
-      try {
-        const { data } = await supabase.from('settings').select('*');
-        if (Array.isArray(data)) {
-          const map = Object.fromEntries(data.map((r: any) => [r.key, r.value]));
-          cachedSettings = { data: map, timestamp: Date.now() };
-          writeStorageCache(SETTINGS_CACHE_KEY, map);
-          return map;
-        }
-      } catch {}
+      console.warn('Backend settings get failed:', e);
     }
     return getCachedSettings() || {};
   },
-  update: (updates: Record<string, string>) => {
+  update: async (updates: Record<string, string>) => {
     clearSettingsCache();
-    return api.put('/settings', { updates }).then(r => { clearSettingsCache(); return r.data; });
+    try {
+      const res = await api.put('/settings', { updates });
+      clearSettingsCache();
+      return res.data;
+    } catch (err) {
+      if (isSupabaseConfigured) {
+        console.warn('Backend settings update failed, attempting direct Supabase upsert:', err);
+        const entries = Object.entries(updates).map(([key, value]) => ({ key, value: String(value) }));
+        await supabase.from('settings').upsert(entries, { onConflict: 'key' });
+        clearSettingsCache();
+        return { message: 'Updated via direct Supabase' };
+      }
+      throw err;
+    }
   },
 };
 
 export const membersApi = {
-  list: async (forceRefresh = false) => {
+  list: async (forceRefresh = false): Promise<any[]> => {
     if (!forceRefresh) {
       const existing = getCachedMembers();
       if (existing) return existing;
     }
+    // 1. Fetch directly from Supabase (bypasses Render cold starts)
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('members')
+          .select('id, name, role, bio, photo_url, display_order')
+          .order('display_order', { ascending: true });
+        if (!error && Array.isArray(data)) {
+          cachedMembers = { data, timestamp: Date.now() };
+          writeStorageCache(MEMBERS_CACHE_KEY, data);
+          return data;
+        }
+      } catch (err) {
+        console.warn('Direct Supabase members list failed, trying backend fallback:', err);
+      }
+    }
+    // 2. Fallback to backend with 5s timeout
     try {
-      const res = await api.get('/members');
+      const res = await api.get('/members', { timeout: 5000 });
       if (Array.isArray(res.data)) {
         cachedMembers = { data: res.data, timestamp: Date.now() };
         writeStorageCache(MEMBERS_CACHE_KEY, res.data);
         return res.data;
       }
     } catch (e) {
-      console.warn('Backend members list failed, trying Supabase directly', e);
-    }
-    if (isSupabaseConfigured) {
-      try {
-        const { data } = await supabase
-          .from('members')
-          .select('id, name, role, photo_url, display_order')
-          .order('display_order', { ascending: true });
-        if (Array.isArray(data)) {
-          cachedMembers = { data, timestamp: Date.now() };
-          writeStorageCache(MEMBERS_CACHE_KEY, data);
-          return data;
-        }
-      } catch {}
+      console.warn('Backend members list failed:', e);
     }
     return getCachedMembers() || [];
   },
@@ -220,52 +245,50 @@ export const membersApi = {
 };
 
 export const albumsApi = {
-  list: async (forceRefresh = false) => {
+  list: async (forceRefresh = false): Promise<any[]> => {
     if (!forceRefresh) {
       const existing = getCachedAlbums();
       if (existing) return existing;
     }
+    // 1. Fetch directly from Supabase (bypasses Render cold starts)
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('albums')
+          .select('id, home_name, visit_date, description, cover_photo_url')
+          .order('visit_date', { ascending: false });
+        if (!error && Array.isArray(data)) {
+          cachedAlbums = { data, timestamp: Date.now() };
+          writeStorageCache(ALBUMS_CACHE_KEY, data);
+          return data;
+        }
+      } catch (err) {
+        console.warn('Direct Supabase albums list failed, trying backend fallback:', err);
+      }
+    }
+    // 2. Fallback to backend with 5s timeout
     try {
-      const res = await api.get('/albums');
+      const res = await api.get('/albums', { timeout: 5000 });
       if (Array.isArray(res.data)) {
         cachedAlbums = { data: res.data, timestamp: Date.now() };
         writeStorageCache(ALBUMS_CACHE_KEY, res.data);
         return res.data;
       }
     } catch (e) {
-      console.warn('Backend albums list failed, trying Supabase directly', e);
-    }
-    if (isSupabaseConfigured) {
-      try {
-        const { data } = await supabase
-          .from('albums')
-          .select('id, home_name, visit_date, description, cover_photo_url')
-          .order('visit_date', { ascending: false });
-        if (Array.isArray(data)) {
-          cachedAlbums = { data, timestamp: Date.now() };
-          writeStorageCache(ALBUMS_CACHE_KEY, data);
-          return data;
-        }
-      } catch {}
+      console.warn('Backend albums list failed:', e);
     }
     return getCachedAlbums() || [];
   },
-  get: async (id: string) => {
-    try {
-      const res = await api.get(`/albums/${id}`);
-      if (res.data && typeof res.data === 'object') {
-        if (Array.isArray(res.data.photos)) {
-          res.data.photos.sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0));
-        }
-        return res.data;
-      }
-    } catch (e) {
-      console.warn(`Backend album ${id} failed, trying Supabase directly`, e);
-    }
+  get: async (id: string): Promise<any> => {
+    // 1. Fetch directly from Supabase (bypasses Render cold starts)
     if (isSupabaseConfigured) {
       try {
-        const { data: album } = await supabase.from('albums').select('*').eq('id', id).single();
-        if (album) {
+        const { data: album, error: albumErr } = await supabase
+          .from('albums')
+          .select('*')
+          .eq('id', id)
+          .single();
+        if (!albumErr && album) {
           let photos: any[] = [];
           try {
             const { data } = await supabase
@@ -282,7 +305,21 @@ export const albumsApi = {
           photos.sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0));
           return { ...album, photos };
         }
-      } catch {}
+      } catch (err) {
+        console.warn(`Direct Supabase album get (${id}) failed, trying backend fallback:`, err);
+      }
+    }
+    // 2. Fallback to backend with 5s timeout
+    try {
+      const res = await api.get(`/albums/${id}`, { timeout: 5000 });
+      if (res.data && typeof res.data === 'object') {
+        if (Array.isArray(res.data.photos)) {
+          res.data.photos.sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0));
+        }
+        return res.data;
+      }
+    } catch (e) {
+      console.warn(`Backend album ${id} failed:`, e);
     }
     return null;
   },
@@ -360,7 +397,31 @@ export const donationsApi = {
 };
 
 export const communityMessagesApi = {
-  listApproved: () => api.get('/community-messages/approved').then(r => r.data),
+  listApproved: async () => {
+    // 1. Fetch directly from Supabase (bypasses Render cold starts)
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('community_messages')
+          .select('*')
+          .eq('is_approved', true)
+          .order('created_at', { ascending: false });
+        if (!error && Array.isArray(data)) {
+          return data;
+        }
+      } catch (err) {
+        console.warn('Direct Supabase community messages fetch failed, trying backend fallback:', err);
+      }
+    }
+    // 2. Fallback to backend with 5s timeout
+    try {
+      const res = await api.get('/community-messages/approved', { timeout: 5000 });
+      return res.data;
+    } catch (e) {
+      console.warn('Backend community messages listApproved failed:', e);
+      return [];
+    }
+  },
   submit: (data: { name: string; message: string; website?: string }) =>
     api.post('/community-messages', data).then(r => r.data),
   listAll: () => api.get('/community-messages').then(r => r.data),
@@ -385,7 +446,7 @@ export const adminApi = {
   verifyAccess: () => api.get('/admin/verify-access').then(r => r.data),
   checkAuthorized: async (email: string): Promise<{ authorized: boolean; role?: string }> => {
     try {
-      const res = await api.post('/admin/check-authorized', { email });
+      const res = await api.post('/admin/check-authorized', { email }, { timeout: 5000 });
       return res.data;
     } catch (e) {
       console.warn('Backend check-authorized call failed, attempting Supabase fallback if available', e);
@@ -403,3 +464,4 @@ export const adminApi = {
   changeEmail: (new_email: string) => api.post('/admin/change-email', { new_email }).then(r => r.data),
   changePassword: (new_password: string) => api.post('/admin/change-password', { new_password }).then(r => r.data),
 };
+

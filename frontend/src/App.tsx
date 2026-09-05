@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Loader2 } from 'lucide-react';
@@ -50,6 +50,11 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    // Wake up Render free tier backend automatically in background on app load
+    fetch('https://narkadhai.onrender.com/api/health').catch(() => {});
+  }, []);
+
   return (
     <ErrorBoundary>
       <BrowserRouter>
