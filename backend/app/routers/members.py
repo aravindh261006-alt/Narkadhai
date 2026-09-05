@@ -2,14 +2,23 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
+import time
 
 from app.db import get_supabase
 from app.services.auth_service import AdminUser, require_owner
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Server-side cache for members
+_members_cache = {"data": None, "timestamp": 0}
+MEMBERS_CACHE_TTL = 300  # 5 minutes in seconds
+
+def invalidate_members_cache():
+    _members_cache["data"] = None
+    _members_cache["timestamp"] = 0
 
 
 class MemberCreate(BaseModel):
@@ -30,20 +39,30 @@ class MemberUpdate(BaseModel):
 
 @router.get("")
 @router.get("/")
-async def list_members():
-    """Public: list all members ordered by display_order."""
+async def list_members(response: Response):
+    """Public: list all members ordered by display_order.
+    Optimized: selects only id, name, role, photo_url, display_order with 5 min caching.
+    """
+    response.headers["Cache-Control"] = "public, max-age=300"
+    now = time.time()
+    if _members_cache["data"] is not None and (now - _members_cache["timestamp"]) < MEMBERS_CACHE_TTL:
+        return _members_cache["data"]
+
     try:
         db = get_supabase()
         resp = (
             db.table("members")
-            .select("id, name, role, bio, photo_url, display_order")
+            .select("id, name, role, photo_url, display_order")
             .order("display_order", desc=False)
             .execute()
         )
-        return resp.data or []
+        data = resp.data or []
+        _members_cache["data"] = data
+        _members_cache["timestamp"] = now
+        return data
     except Exception as e:
         logger.error("Failed to list members: %s", e, exc_info=True)
-        return []
+        return _members_cache["data"] or []
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -60,6 +79,7 @@ async def create_member(
         if not resp.data:
             logger.error("Member insert returned no data")
             raise HTTPException(status_code=500, detail="Database returned no record on member create.")
+        invalidate_members_cache()
         logger.info("Member created successfully with ID: %s", resp.data[0].get("id"))
         return resp.data[0]
     except HTTPException:
@@ -86,6 +106,7 @@ async def update_member(
         resp = db.table("members").update(update_data).eq("id", member_id).execute()
         if not resp.data:
             raise HTTPException(status_code=404, detail="Member not found or could not be updated")
+        invalidate_members_cache()
         return resp.data[0]
     except HTTPException:
         raise
@@ -104,6 +125,7 @@ async def delete_member(
         db = get_supabase()
         logger.info("Admin %s deleting member %s", admin.email, member_id)
         db.table("members").delete().eq("id", member_id).execute()
+        invalidate_members_cache()
     except Exception as e:
         logger.error("Error deleting member %s: %s", member_id, e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to delete member: {str(e)}")

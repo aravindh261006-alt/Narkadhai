@@ -20,6 +20,9 @@ export default function Logo({
       <img
         src="/LOGO_NEW_.png"
         alt="Narkadhai"
+        loading="lazy"
+        width={120}
+        height={44}
         className={`${sizeClasses} h-auto max-h-14 object-contain transition-transform group-hover:scale-105`}
       />
     </div>

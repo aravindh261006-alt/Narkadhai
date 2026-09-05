@@ -54,6 +54,11 @@ create table if not exists public.album_photos (
   created_at    timestamptz not null default now()
 );
 
+-- Indexes for query performance
+create index if not exists idx_members_display_order on public.members(display_order);
+create index if not exists idx_albums_visit_date on public.albums(visit_date desc);
+create index if not exists idx_album_photos_album_id on public.album_photos(album_id);
+
 -- Migration for existing databases:
 -- ALTER TABLE public.album_photos ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
 

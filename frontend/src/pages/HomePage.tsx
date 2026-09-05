@@ -81,6 +81,9 @@ export default function HomePage() {
             <img
               src="/LOGO_NEW_.png"
               alt="Narkadhai"
+              loading="lazy"
+              width={280}
+              height={80}
               className="w-[200px] sm:w-[240px] md:w-[280px] max-w-full h-auto object-contain mx-auto drop-shadow-md"
             />
           </h1>

@@ -1,8 +1,9 @@
 """Settings router."""
 import logging
+import time
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
 from app.db import get_supabase
@@ -28,6 +29,14 @@ PUBLIC_KEYS = {
     "owner_photo_url",
 }
 
+# Server-side cache for settings
+_settings_cache = {"data": None, "timestamp": 0}
+SETTINGS_CACHE_TTL = 300  # 5 minutes in seconds
+
+def invalidate_settings_cache():
+    _settings_cache["data"] = None
+    _settings_cache["timestamp"] = 0
+
 
 class SettingsUpdate(BaseModel):
     updates: dict[str, str]
@@ -35,19 +44,27 @@ class SettingsUpdate(BaseModel):
 
 @router.get("")
 @router.get("/")
-async def get_settings():
-    """Public: return only non-sensitive settings."""
+async def get_settings(response: Response):
+    """Public: return only non-sensitive settings with 5 min caching."""
+    response.headers["Cache-Control"] = "public, max-age=300"
+    now = time.time()
+    if _settings_cache["data"] is not None and (now - _settings_cache["timestamp"]) < SETTINGS_CACHE_TTL:
+        return _settings_cache["data"]
+
     try:
         db = get_supabase()
         resp = db.table("settings").select("key, value").execute()
-        return {
+        data = {
             row["key"]: row["value"]
             for row in (resp.data or [])
             if row.get("key") in PUBLIC_KEYS
         }
+        _settings_cache["data"] = data
+        _settings_cache["timestamp"] = now
+        return data
     except Exception as e:
         logger.error("Failed to fetch settings from DB: %s", e, exc_info=True)
-        return {}
+        return _settings_cache["data"] or {}
 
 
 @router.put("")
@@ -77,6 +94,8 @@ async def update_settings(
 
         if errors:
             raise HTTPException(status_code=400, detail="; ".join(errors))
+
+        invalidate_settings_cache()
         return {"ok": True}
     except HTTPException:
         raise

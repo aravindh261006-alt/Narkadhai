@@ -38,13 +38,119 @@ api.interceptors.request.use(async (config) => {
 
 export default api;
 
+// --- Storage & TTL Cache Helpers ---
+
+const SETTINGS_CACHE_KEY = 'narkadhai_settings_cache';
+const MEMBERS_CACHE_KEY = 'narkadhai_members_cache';
+const ALBUMS_CACHE_KEY = 'narkadhai_albums_cache';
+
+const SETTINGS_TTL = 5 * 60 * 1000; // 5 minutes
+const MEMBERS_TTL = 5 * 60 * 1000;  // 5 minutes
+const ALBUMS_TTL = 2 * 60 * 1000;   // 2 minutes
+
+function readStorageCache<T>(key: string, ttl: number): T | null {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.timestamp === 'number' && Date.now() - parsed.timestamp < ttl) {
+      return parsed.data as T;
+    }
+  } catch (e) {
+    console.warn(`Failed to read cache for ${key}:`, e);
+  }
+  return null;
+}
+
+function writeStorageCache<T>(key: string, data: T) {
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+    }
+  } catch (e) {
+    console.warn(`Failed to write cache for ${key}:`, e);
+  }
+}
+
+function removeStorageCache(key: string) {
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(key);
+    }
+  } catch {}
+}
+
+// In-memory cache mirrors storage for instant access
+let cachedSettings: { data: Record<string, any>; timestamp: number } | null = null;
+let cachedMembers: { data: any[]; timestamp: number } | null = null;
+let cachedAlbums: { data: any[]; timestamp: number } | null = null;
+
+export const clearSettingsCache = () => {
+  cachedSettings = null;
+  removeStorageCache(SETTINGS_CACHE_KEY);
+};
+
+export const clearMembersCache = () => {
+  cachedMembers = null;
+  removeStorageCache(MEMBERS_CACHE_KEY);
+};
+
+export const clearAlbumsCache = () => {
+  cachedAlbums = null;
+  removeStorageCache(ALBUMS_CACHE_KEY);
+};
+
+export const getCachedSettings = (): Record<string, any> | null => {
+  if (cachedSettings && Date.now() - cachedSettings.timestamp < SETTINGS_TTL) {
+    return cachedSettings.data;
+  }
+  const fromStorage = readStorageCache<Record<string, any>>(SETTINGS_CACHE_KEY, SETTINGS_TTL);
+  if (fromStorage) {
+    cachedSettings = { data: fromStorage, timestamp: Date.now() };
+    return fromStorage;
+  }
+  return null;
+};
+
+export const getCachedMembers = (): any[] | null => {
+  if (cachedMembers && Date.now() - cachedMembers.timestamp < MEMBERS_TTL) {
+    return cachedMembers.data;
+  }
+  const fromStorage = readStorageCache<any[]>(MEMBERS_CACHE_KEY, MEMBERS_TTL);
+  if (fromStorage) {
+    cachedMembers = { data: fromStorage, timestamp: Date.now() };
+    return fromStorage;
+  }
+  return null;
+};
+
+export const getCachedAlbums = (): any[] | null => {
+  if (cachedAlbums && Date.now() - cachedAlbums.timestamp < ALBUMS_TTL) {
+    return cachedAlbums.data;
+  }
+  const fromStorage = readStorageCache<any[]>(ALBUMS_CACHE_KEY, ALBUMS_TTL);
+  if (fromStorage) {
+    cachedAlbums = { data: fromStorage, timestamp: Date.now() };
+    return fromStorage;
+  }
+  return null;
+};
+
 // --- Typed API helpers ---
 
 export const settingsApi = {
-  get: async () => {
+  get: async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const existing = getCachedSettings();
+      if (existing && Object.keys(existing).length > 0) return existing;
+    }
     try {
       const res = await api.get('/settings');
-      if (res.data && typeof res.data === 'object' && Object.keys(res.data).length > 0) return res.data;
+      if (res.data && typeof res.data === 'object' && Object.keys(res.data).length > 0) {
+        cachedSettings = { data: res.data, timestamp: Date.now() };
+        writeStorageCache(SETTINGS_CACHE_KEY, res.data);
+        return res.data;
+      }
     } catch (e) {
       console.warn('Backend settings get failed, trying Supabase directly', e);
     }
@@ -52,33 +158,32 @@ export const settingsApi = {
       try {
         const { data } = await supabase.from('settings').select('*');
         if (Array.isArray(data)) {
-          return Object.fromEntries(data.map((r: any) => [r.key, r.value]));
+          const map = Object.fromEntries(data.map((r: any) => [r.key, r.value]));
+          cachedSettings = { data: map, timestamp: Date.now() };
+          writeStorageCache(SETTINGS_CACHE_KEY, map);
+          return map;
         }
       } catch {}
     }
-    return {};
+    return getCachedSettings() || {};
   },
-  update: (updates: Record<string, string>) => api.put('/settings', { updates }).then(r => r.data),
+  update: (updates: Record<string, string>) => {
+    clearSettingsCache();
+    return api.put('/settings', { updates }).then(r => { clearSettingsCache(); return r.data; });
+  },
 };
-
-// In-memory cache for fast instant navigation
-let cachedMembers: any[] | null = null;
-let cachedAlbums: any[] | null = null;
-
-export const clearMembersCache = () => { cachedMembers = null; };
-export const clearAlbumsCache = () => { cachedAlbums = null; };
-export const getCachedMembers = () => cachedMembers;
-export const getCachedAlbums = () => cachedAlbums;
 
 export const membersApi = {
   list: async (forceRefresh = false) => {
-    if (!forceRefresh && cachedMembers) {
-      return cachedMembers;
+    if (!forceRefresh) {
+      const existing = getCachedMembers();
+      if (existing) return existing;
     }
     try {
       const res = await api.get('/members');
       if (Array.isArray(res.data)) {
-        cachedMembers = res.data;
+        cachedMembers = { data: res.data, timestamp: Date.now() };
+        writeStorageCache(MEMBERS_CACHE_KEY, res.data);
         return res.data;
       }
     } catch (e) {
@@ -88,15 +193,16 @@ export const membersApi = {
       try {
         const { data } = await supabase
           .from('members')
-          .select('id, name, role, bio, photo_url, display_order')
+          .select('id, name, role, photo_url, display_order')
           .order('display_order', { ascending: true });
         if (Array.isArray(data)) {
-          cachedMembers = data;
+          cachedMembers = { data, timestamp: Date.now() };
+          writeStorageCache(MEMBERS_CACHE_KEY, data);
           return data;
         }
       } catch {}
     }
-    return cachedMembers || [];
+    return getCachedMembers() || [];
   },
   create: (data: object) => {
     clearMembersCache();
@@ -115,13 +221,15 @@ export const membersApi = {
 
 export const albumsApi = {
   list: async (forceRefresh = false) => {
-    if (!forceRefresh && cachedAlbums) {
-      return cachedAlbums;
+    if (!forceRefresh) {
+      const existing = getCachedAlbums();
+      if (existing) return existing;
     }
     try {
       const res = await api.get('/albums');
       if (Array.isArray(res.data)) {
-        cachedAlbums = res.data;
+        cachedAlbums = { data: res.data, timestamp: Date.now() };
+        writeStorageCache(ALBUMS_CACHE_KEY, res.data);
         return res.data;
       }
     } catch (e) {
@@ -129,28 +237,18 @@ export const albumsApi = {
     }
     if (isSupabaseConfigured) {
       try {
-        try {
-          const { data } = await supabase
-            .from('albums')
-            .select('id, home_name, visit_date, description, cover_photo_url, location')
-            .order('visit_date', { ascending: false });
-          if (Array.isArray(data)) {
-            cachedAlbums = data;
-            return data;
-          }
-        } catch {
-          const { data } = await supabase
-            .from('albums')
-            .select('id, home_name, visit_date, description, cover_photo_url')
-            .order('visit_date', { ascending: false });
-          if (Array.isArray(data)) {
-            cachedAlbums = data;
-            return data;
-          }
+        const { data } = await supabase
+          .from('albums')
+          .select('id, home_name, visit_date, description, cover_photo_url')
+          .order('visit_date', { ascending: false });
+        if (Array.isArray(data)) {
+          cachedAlbums = { data, timestamp: Date.now() };
+          writeStorageCache(ALBUMS_CACHE_KEY, data);
+          return data;
         }
       } catch {}
     }
-    return cachedAlbums || [];
+    return getCachedAlbums() || [];
   },
   get: async (id: string) => {
     try {

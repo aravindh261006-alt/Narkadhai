@@ -2,14 +2,23 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
+import time
 
 from app.db import get_supabase
 from app.services.auth_service import AdminUser, require_owner
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Server-side cache for album list
+_albums_cache = {"data": None, "timestamp": 0}
+ALBUMS_CACHE_TTL = 120  # 2 minutes in seconds
+
+def invalidate_albums_cache():
+    _albums_cache["data"] = None
+    _albums_cache["timestamp"] = 0
 
 
 class AlbumCreate(BaseModel):
@@ -44,31 +53,30 @@ class ReorderPhotosPayload(BaseModel):
 
 @router.get("")
 @router.get("/")
-async def list_albums():
+async def list_albums(response: Response):
     """Public: list all albums ordered by visit_date desc.
-    Only fetch album info and cover photo, NOT photos inside each album.
+    Optimized: only fetch id, home_name, visit_date, description, cover_photo_url with 2 min caching.
     """
+    response.headers["Cache-Control"] = "public, max-age=120"
+    now = time.time()
+    if _albums_cache["data"] is not None and (now - _albums_cache["timestamp"]) < ALBUMS_CACHE_TTL:
+        return _albums_cache["data"]
+
     try:
         db = get_supabase()
-        try:
-            resp = (
-                db.table("albums")
-                .select("id, home_name, visit_date, description, cover_photo_url, location")
-                .order("visit_date", desc=True)
-                .execute()
-            )
-        except Exception:
-            # Fallback if 'location' column does not exist on legacy instances
-            resp = (
-                db.table("albums")
-                .select("id, home_name, visit_date, description, cover_photo_url")
-                .order("visit_date", desc=True)
-                .execute()
-            )
-        return resp.data or []
+        resp = (
+            db.table("albums")
+            .select("id, home_name, visit_date, description, cover_photo_url")
+            .order("visit_date", desc=True)
+            .execute()
+        )
+        data = resp.data or []
+        _albums_cache["data"] = data
+        _albums_cache["timestamp"] = now
+        return data
     except Exception as e:
         logger.error("Failed to list albums: %s", e, exc_info=True)
-        return []
+        return _albums_cache["data"] or []
 
 
 @router.get("/{album_id}")
@@ -117,6 +125,7 @@ async def create_album(
         if not resp.data:
             logger.error("Album insert returned no data")
             raise HTTPException(status_code=500, detail="Database returned no record on album create.")
+        invalidate_albums_cache()
         logger.info("Album created successfully with ID: %s", resp.data[0].get("id"))
         return resp.data[0]
     except HTTPException:
@@ -143,6 +152,7 @@ async def update_album(
         resp = db.table("albums").update(update_data).eq("id", album_id).execute()
         if not resp.data:
             raise HTTPException(status_code=404, detail="Album not found or could not be updated")
+        invalidate_albums_cache()
         return resp.data[0]
     except HTTPException:
         raise
@@ -161,6 +171,7 @@ async def delete_album(
         db = get_supabase()
         logger.info("Admin %s deleting album %s", admin.email, album_id)
         db.table("albums").delete().eq("id", album_id).execute()
+        invalidate_albums_cache()
     except Exception as e:
         logger.error("Error deleting album %s: %s", album_id, e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to delete album: {str(e)}")
@@ -220,6 +231,7 @@ async def add_photo(
             except Exception as e:
                 logger.warning("Could not auto-set cover photo for album %s: %s", album_id, e)
 
+        invalidate_albums_cache()
         return resp.data[0]
     except HTTPException:
         raise
@@ -290,6 +302,7 @@ async def delete_photo(
             except Exception as update_err:
                 logger.warning("Failed to auto-update album cover after photo deletion: %s", update_err)
 
+        invalidate_albums_cache()
     except Exception as e:
         logger.error("Error deleting photo %s: %s", photo_id, e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to delete photo: {str(e)}")
@@ -337,6 +350,7 @@ async def reorder_photos(
             except Exception as item_err:
                 logger.warning("Failed to update display_order for photo %s: %s", item.photo_id, item_err)
 
+        invalidate_albums_cache()
         return {"status": "ok", "updated_count": updated}
     except HTTPException:
         raise

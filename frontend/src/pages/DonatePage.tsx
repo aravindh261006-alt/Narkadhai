@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { QrCode, Upload, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
-import { donationsApi, settingsApi } from '../lib/api';
+import { donationsApi, settingsApi, getCachedSettings } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import type { Settings } from '../types';
 
@@ -18,7 +18,8 @@ interface DonationForm {
 type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
 
 export default function DonatePage() {
-  const [settings, setSettings] = useState<Settings>({});
+  const cached = getCachedSettings();
+  const [settings, setSettings] = useState<Settings>(cached || {});
   const [submitState, setSubmitState] = useState<SubmitState>('idle');
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(false);
@@ -29,7 +30,9 @@ export default function DonatePage() {
   });
 
   useEffect(() => {
-    settingsApi.get().then(setSettings).catch(() => {});
+    settingsApi.get().then(res => {
+      if (res && typeof res === 'object') setSettings(res);
+    }).catch(() => {});
   }, []);
 
   const onSubmit = async (data: DonationForm) => {
@@ -108,7 +111,10 @@ export default function DonatePage() {
                   <img
                     src={settings.qr_code_url}
                     alt={settings.qr_code_label_1 || "UPI QR Code for Narkadhai donations"}
-                    className={`max-w-[240px] mx-auto rounded-xl shadow-md border border-gray-100${settings.qr_code_label_1 ? ' mb-3' : ''}`}
+                    loading="lazy"
+                    width={240}
+                    height={240}
+                    className={`w-[240px] h-[240px] max-w-[240px] mx-auto rounded-xl shadow-md border border-gray-100 object-contain${settings.qr_code_label_1 ? ' mb-3' : ''}`}
                   />
                   {settings.qr_code_label_1 && (
                     <p className="inline-block bg-primary-100 text-primary-900 text-xs font-bold px-3 py-1 rounded-full">
@@ -133,7 +139,10 @@ export default function DonatePage() {
                 <img
                   src={settings.qr_code_url_2}
                   alt={settings.qr_code_label_2 || "Backup QR Code"}
-                  className="max-w-[210px] mx-auto rounded-xl shadow-md border border-amber-200 mb-3"
+                  loading="lazy"
+                  width={210}
+                  height={210}
+                  className="w-[210px] h-[210px] max-w-[210px] mx-auto rounded-xl shadow-md border border-amber-200 object-contain mb-3"
                 />
                 {settings.qr_code_label_2 && (
                   <p className="inline-block bg-amber-100 text-amber-900 text-xs font-bold px-3 py-1 rounded-full">

@@ -44,6 +44,9 @@ export default function Footer() {
               <img
                 src="/LOGO_NEW_.png"
                 alt="Narkadhai"
+                loading="lazy"
+                width={120}
+                height={44}
                 className="w-[100px] sm:w-[110px] md:w-[120px] h-auto object-contain transition-transform group-hover:scale-105"
               />
             </Link>
