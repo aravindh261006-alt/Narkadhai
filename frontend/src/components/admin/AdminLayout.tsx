@@ -68,15 +68,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-[#2C1810] text-[#FDFAF5] flex flex-col flex-shrink-0 border-r border-[#D4A017]/20">
-        <div className="p-5 border-b border-[#D4A017]/15">
-          <Link to="/" className="flex flex-col gap-1 group" aria-label="Narkadhai Admin Panel">
+      <aside className="w-64 bg-primary-900 text-white flex flex-col flex-shrink-0 border-r border-primary-800">
+        <div className="p-5 border-b border-primary-800/60">
+          <Link to="/" className="flex flex-col gap-1.5 group" aria-label="Narkadhai Admin Panel">
             <img
-              src="/logo.png"
+              src="/LOGO_NEW_.png"
               alt="Narkadhai"
-              className="w-[130px] sm:w-[140px] h-auto max-h-11 object-contain transition-transform group-hover:scale-105"
+              className="w-[90px] sm:w-[100px] h-auto max-h-11 object-contain transition-transform group-hover:scale-105"
             />
-            <span className="text-[#D4A017] text-[10px] font-bold tracking-widest uppercase pl-0.5">Admin Panel</span>
+            <span className="text-amber-400 text-[10px] font-bold tracking-widest uppercase pl-0.5">Admin Panel</span>
           </Link>
         </div>
 
@@ -91,8 +91,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 to={item.to}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   active
-                    ? 'bg-[#D4A017] text-[#2C1810] font-bold shadow-xs'
-                    : 'text-[#FDFAF5]/80 hover:bg-white/5 hover:text-[#D4A017]'
+                    ? 'bg-primary-700 text-white font-semibold shadow-xs'
+                    : 'text-primary-200/80 hover:bg-white/10 hover:text-white'
                 }`}
               >
                 <item.icon className="w-4 h-4" />
@@ -103,7 +103,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="p-4 border-t border-primary-800">
-          <Link to="/" className="flex items-center gap-3 px-3 py-2 text-primary-400 hover:text-white text-sm transition-colors mb-1">
+          <Link to="/" className="flex items-center gap-3 px-3 py-2 text-primary-300 hover:text-white text-sm transition-colors mb-1">
             ← View Site
           </Link>
           <button

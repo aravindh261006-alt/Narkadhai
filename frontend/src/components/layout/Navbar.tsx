@@ -22,15 +22,15 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-[#2C1810] border-b border-[#D4A017]/20 shadow-md text-[#FDFAF5]">
+    <nav className="sticky top-0 z-50 bg-primary-900 border-b border-primary-800/80 shadow-md text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-18">
           {/* Logo */}
           <Link to="/" className="group flex items-center py-1" aria-label="Narkadhai Home">
             <img
-              src="/logo.png"
+              src="/LOGO_NEW_.png"
               alt="Narkadhai"
-              className="w-[130px] sm:w-[140px] md:w-[150px] h-auto max-h-12 sm:max-h-14 object-contain transition-transform group-hover:scale-105"
+              className="w-[85px] sm:w-[95px] md:w-[100px] h-auto object-contain transition-transform group-hover:scale-105"
             />
           </Link>
 
@@ -44,10 +44,10 @@ export default function Navbar() {
                   to={link.to}
                   className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
                     link.highlight
-                      ? 'bg-[#D4A017] text-[#2C1810] font-bold hover:bg-[#b88510] shadow-sm ml-2'
+                      ? 'bg-amber-500 text-primary-950 font-bold hover:bg-amber-400 shadow-sm ml-2'
                       : active
-                      ? 'text-[#D4A017] bg-[#D4A017]/15 font-semibold'
-                      : 'text-[#FDFAF5]/85 hover:text-[#D4A017] hover:bg-white/5'
+                      ? 'text-white bg-primary-700 font-semibold shadow-xs'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   {link.label}
@@ -58,7 +58,7 @@ export default function Navbar() {
 
           {/* Mobile hamburger */}
           <button
-            className="md:hidden p-2 rounded-lg text-[#FDFAF5] hover:text-[#D4A017] hover:bg-white/5 transition-colors"
+            className="md:hidden p-2 rounded-lg text-white hover:text-white hover:bg-white/10 transition-colors"
             onClick={() => setOpen(!open)}
             aria-label="Toggle menu"
           >
@@ -69,7 +69,7 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {open && (
-        <div className="md:hidden border-t border-[#D4A017]/20 bg-[#2C1810] px-4 py-4 space-y-1.5 shadow-xl">
+        <div className="md:hidden border-t border-primary-800/80 bg-primary-900 px-4 py-4 space-y-1.5 shadow-xl">
           {navLinks.map(link => {
             const active = isLinkActive(link.to);
             return (
@@ -79,10 +79,10 @@ export default function Navbar() {
                 onClick={() => setOpen(false)}
                 className={`block px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   link.highlight
-                    ? 'bg-[#D4A017] text-[#2C1810] font-bold shadow-sm'
+                    ? 'bg-amber-500 text-primary-950 font-bold shadow-sm'
                     : active
-                    ? 'text-[#D4A017] bg-[#D4A017]/15 font-semibold'
-                    : 'text-[#FDFAF5]/85 hover:text-[#D4A017] hover:bg-white/5'
+                    ? 'text-white bg-primary-700 font-semibold shadow-xs'
+                    : 'text-white/80 hover:text-white hover:bg-white/10'
                 }`}
               >
                 {link.label}

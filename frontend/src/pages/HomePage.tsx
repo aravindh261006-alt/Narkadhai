@@ -79,9 +79,9 @@ export default function HomePage() {
           </div>
           <h1 className="flex justify-center items-center mb-5">
             <img
-              src="/logo.png"
+              src="/LOGO_NEW_.png"
               alt="Narkadhai"
-              className="w-[240px] sm:w-[270px] md:w-[300px] max-w-full h-auto object-contain mx-auto drop-shadow-md"
+              className="w-[200px] sm:w-[240px] md:w-[280px] max-w-full h-auto object-contain mx-auto drop-shadow-md"
             />
           </h1>
           <p className="text-xl md:text-2xl text-primary-200 max-w-2xl mx-auto mb-8">
@@ -91,13 +91,13 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               to="/donate"
-              className="inline-flex items-center gap-2 bg-[#D4A017] hover:bg-[#b88510] text-[#2C1810] font-bold px-8 py-4 rounded-xl transition-all hover:scale-105 shadow-lg shadow-[#D4A017]/25"
+              className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-primary-950 font-bold px-8 py-4 rounded-xl transition-all hover:scale-105 shadow-lg shadow-amber-500/20"
             >
-              <Heart className="w-5 h-5 fill-[#2C1810]" /> Donate Now
+              <Heart className="w-5 h-5 fill-primary-950" /> Donate Now
             </Link>
             <Link
               to="/about"
-              className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-[#FDFAF5] px-8 py-4 rounded-xl border border-white/20 transition-all font-medium"
+              className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-8 py-4 rounded-xl border border-white/20 transition-all font-medium"
             >
               Learn About Us <ArrowRight className="w-4 h-4" />
             </Link>
@@ -236,11 +236,11 @@ export default function HomePage() {
                   <button
                     type="submit"
                     disabled={submittingMsg}
-                    className="w-full inline-flex items-center justify-center gap-2 bg-[#D4A017] hover:bg-[#b88510] disabled:opacity-50 text-[#2C1810] font-bold py-3.5 px-6 rounded-xl transition-all hover:scale-[1.01] shadow-lg shadow-[#D4A017]/25 text-sm"
+                    className="w-full inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-primary-950 font-bold py-3.5 px-6 rounded-xl transition-all hover:scale-[1.01] shadow-lg shadow-amber-500/20 text-sm"
                   >
                     {submittingMsg ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin text-[#2C1810]" /> Submitting...
+                        <Loader2 className="w-4 h-4 animate-spin text-primary-950" /> Submitting...
                       </>
                     ) : (
                       <>

@@ -306,11 +306,11 @@ export default function DonatePage() {
               <button
                 type="submit"
                 disabled={submitState === 'submitting' || uploadProgress}
-                className="w-full bg-[#D4A017] hover:bg-[#b88510] text-[#2C1810] py-4 rounded-xl font-bold text-sm transition-all hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md shadow-[#D4A017]/20"
+                className="w-full bg-primary-700 hover:bg-primary-800 text-white py-4 rounded-xl font-semibold text-sm transition-all hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md shadow-primary-700/20"
               >
                 {submitState === 'submitting' || uploadProgress ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin text-[#2C1810]" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                     {uploadProgress ? 'Uploading screenshot...' : 'Submitting...'}
                   </>
                 ) : (
